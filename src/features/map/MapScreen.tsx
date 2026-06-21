@@ -41,6 +41,10 @@ export function MapScreen() {
       ),
     [searches]
   );
+  const polyZones = useMemo(
+    () => searches.filter(s => s.active && s.polygon && s.polygon.length >= 3),
+    [searches]
+  );
 
   useEffect(() => {
     const el = containerRef.current;
@@ -63,6 +67,20 @@ export function MapScreen() {
       }).addTo(map);
       c.bindTooltip(z.name);
       bounds.extend(c.getBounds());
+    }
+
+    for (const z of polyZones) {
+      const latlngs = (z.polygon as Array<[number, number]>).map(
+        ([lng, lat]) => [lat, lng] as L.LatLngTuple
+      );
+      const poly = L.polygon(latlngs, {
+        color: '#0f766e',
+        weight: 1,
+        fillColor: '#14b8a6',
+        fillOpacity: 0.08,
+      }).addTo(map);
+      poly.bindTooltip(z.name);
+      bounds.extend(poly.getBounds());
     }
 
     for (const l of geoListings) {
@@ -92,7 +110,7 @@ export function MapScreen() {
     return () => {
       map.remove();
     };
-  }, [geoListings, zones]);
+  }, [geoListings, zones, polyZones]);
 
   return (
     <>
@@ -102,7 +120,9 @@ export function MapScreen() {
           {geoListings.length} géolocalisée(s)
         </span>
       </div>
-      {geoListings.length === 0 && zones.length === 0 ? (
+      {geoListings.length === 0 &&
+      zones.length === 0 &&
+      polyZones.length === 0 ? (
         <div className="empty">
           Aucune annonce géolocalisée. Importez des annonces avec coordonnées,
           ou « Localisez » la zone d’une recherche.

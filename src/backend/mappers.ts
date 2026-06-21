@@ -28,6 +28,7 @@ export interface SearchRow {
   center_lat: number | null;
   center_lng: number | null;
   radius_km: number | null;
+  polygon: Array<[number, number]> | null;
   price_min: number | null;
   price_max: number | null;
   surface_min: number | null;
@@ -139,6 +140,7 @@ export function searchFromRow(r: SearchRow): LocalSearch {
     centerLat: r.center_lat,
     centerLng: r.center_lng,
     radiusKm: r.radius_km,
+    polygon: r.polygon ?? null,
     priceMin: r.price_min,
     priceMax: r.price_max,
     surfaceMin: r.surface_min,
@@ -274,6 +276,7 @@ export function searchToRow(s: LocalSearch): Record<string, unknown> {
     center_lat: s.centerLat,
     center_lng: s.centerLng,
     radius_km: s.radiusKm,
+    polygon: s.polygon ?? null,
     price_min: s.priceMin,
     price_max: s.priceMax,
     surface_min: s.surfaceMin,

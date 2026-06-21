@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { MapPin } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { geocode } from '../../lib/geocoder';
 import type { LocalSearch, WatchFrequency } from '../../store/types';
+
+const ZonePolygonEditor = lazy(() =>
+  import('./ZonePolygonEditor').then(m => ({ default: m.ZonePolygonEditor }))
+);
 
 const PROPERTY_TYPES = [
   'appartement',
@@ -76,6 +80,10 @@ export function SearchEditScreen() {
   );
   const [geoBusy, setGeoBusy] = useState(false);
   const [geoMsg, setGeoMsg] = useState<string | null>(null);
+  const [polygon, setPolygon] = useState<Array<[number, number]> | null>(
+    editing?.polygon ?? null
+  );
+  const [showZone, setShowZone] = useState(false);
 
   // id présent mais recherche introuvable → message clair.
   if (isEdit && !editing) {
@@ -123,6 +131,7 @@ export function SearchEditScreen() {
       centerLat: center?.lat ?? null,
       centerLng: center?.lng ?? null,
       radiusKm: toNum(radiusKm),
+      polygon,
       priceMin: toNum(priceMin),
       priceMax: toNum(priceMax),
       surfaceMin: toNum(surfaceMin),
@@ -200,6 +209,50 @@ export function SearchEditScreen() {
             <span className="muted" style={{ fontSize: '0.78rem' }}>
               {geoMsg}
             </span>
+          )}
+        </div>
+
+        <div className="field">
+          <div className="row spread">
+            <label style={{ margin: 0 }}>Zone personnalisée (polygone)</label>
+            <button
+              type="button"
+              className="btn"
+              style={{ padding: '0.35rem 0.6rem' }}
+              onClick={() => setShowZone(v => !v)}
+            >
+              {showZone
+                ? 'Fermer la carte'
+                : polygon
+                  ? 'Modifier la zone'
+                  : 'Dessiner une zone'}
+            </button>
+          </div>
+          {polygon && !showZone && (
+            <div className="row" style={{ gap: '0.5rem', marginTop: '0.3rem' }}>
+              <span className="muted" style={{ fontSize: '0.78rem' }}>
+                Zone définie ({polygon.length} sommets).
+              </span>
+              <button
+                type="button"
+                className="btn"
+                style={{ padding: '0.1rem 0.5rem', fontSize: '0.74rem' }}
+                onClick={() => setPolygon(null)}
+              >
+                Retirer
+              </button>
+            </div>
+          )}
+          {showZone && (
+            <Suspense
+              fallback={<div className="empty">Chargement de la carte…</div>}
+            >
+              <ZonePolygonEditor
+                value={polygon}
+                center={center}
+                onChange={setPolygon}
+              />
+            </Suspense>
           )}
         </div>
 

@@ -92,6 +92,7 @@ function toCriteria(s: LocalSearch): SearchCriteria {
     centerLat: s.centerLat,
     centerLng: s.centerLng,
     radiusKm: s.radiusKm,
+    polygon: s.polygon,
   };
 }
 
