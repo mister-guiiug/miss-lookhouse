@@ -1,5 +1,9 @@
+import { useEffect, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { formatDate, timeAgo } from '../../lib/format';
+import { IS_SUPABASE } from '../../backend/config';
+import { fetchIngestionRuns } from '../../backend/ingestionRuns';
+import { aggregateRuns } from '../../lib/runStats';
 import type { IngestionRun } from '../../store/types';
 
 const TRIGGER_LABEL: Record<IngestionRun['trigger'], string> = {
@@ -17,21 +21,89 @@ const STATUS_META: Record<
   error: { label: 'Échec', cls: 'badge-danger' },
 };
 
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ minWidth: 84 }}>
+      <div className="price" style={{ fontSize: '1.3rem' }}>
+        {value}
+      </div>
+      <div className="muted" style={{ fontSize: '0.74rem' }}>
+        {label}
+      </div>
+    </div>
+  );
+}
+
 /**
- * File d'attente / historique des traitements. Alimentée en local par chaque
- * import (le store journalise un run) ; en mode Supabase, les collectes
- * planifiées (`ingestion_runs`) s'y ajouteront.
+ * Traitements + observabilité. En local : journal des imports (`data.runs`).
+ * En mode Supabase : on y ajoute les collectes planifiées (`ingestion_runs`).
+ * Un encart de métriques agrège l'ensemble (taux de succès, volumes…).
  */
 export function ProcessingScreen() {
-  const runs = useAppStore(s => s.data.runs);
-  const sorted = [...(runs ?? [])].sort((a, b) => b.at.localeCompare(a.at));
+  const localRuns = useAppStore(s => s.data.runs);
+  const [serverRuns, setServerRuns] = useState<IngestionRun[]>([]);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!IS_SUPABASE) return;
+    fetchIngestionRuns()
+      .then(setServerRuns)
+      .catch(e => setErr(e instanceof Error ? e.message : String(e)));
+  }, []);
+
+  const all = [...(localRuns ?? []), ...serverRuns];
+  const sorted = [...all].sort((a, b) => b.at.localeCompare(a.at));
+  const m = aggregateRuns(all);
 
   return (
     <>
-      <h2 className="section-title">Traitements / imports</h2>
+      <h2 className="section-title">Traitements / observabilité</h2>
       <p className="muted" style={{ fontSize: '0.84rem' }}>
         Historique des imports et collectes (le plus récent en premier).
       </p>
+
+      {m.total > 0 && (
+        <div className="card">
+          <div
+            className="row spread"
+            style={{ flexWrap: 'wrap', gap: '0.8rem' }}
+          >
+            <Metric label="Traitements" value={String(m.total)} />
+            <Metric
+              label="Taux de succès"
+              value={m.successRate == null ? '—' : `${m.successRate} %`}
+            />
+            <Metric label="Annonces ajoutées" value={String(m.totalAdded)} />
+            <Metric
+              label="Dernière"
+              value={m.lastAt ? timeAgo(m.lastAt) : '—'}
+            />
+          </div>
+          <div className="row" style={{ marginTop: '0.6rem' }}>
+            <span className="badge badge-ok">{m.success} succès</span>
+            {m.partial > 0 && (
+              <span className="badge badge-warn">{m.partial} partiel(s)</span>
+            )}
+            {m.error > 0 && (
+              <span className="badge badge-danger">{m.error} échec(s)</span>
+            )}
+            {m.totalWarnings > 0 && (
+              <span className="badge badge-muted">
+                {m.totalWarnings} avertissement(s)
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {err && (
+        <div
+          className="card"
+          style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}
+        >
+          {err}
+        </div>
+      )}
 
       {sorted.length === 0 ? (
         <div className="empty">
