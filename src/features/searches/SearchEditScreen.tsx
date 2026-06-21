@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { MapPin } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
+import { geocode } from '../../lib/geocoder';
 import type { LocalSearch, WatchFrequency } from '../../store/types';
 
 const PROPERTY_TYPES = [
@@ -63,6 +65,17 @@ export function SearchEditScreen() {
   const [frequency, setFrequency] = useState<WatchFrequency>(
     editing?.frequency ?? 'hourly'
   );
+  const [center, setCenter] = useState<{
+    lat: number;
+    lng: number;
+    label: string;
+  } | null>(
+    editing?.centerLat != null && editing.centerLng != null
+      ? { lat: editing.centerLat, lng: editing.centerLng, label: '' }
+      : null
+  );
+  const [geoBusy, setGeoBusy] = useState(false);
+  const [geoMsg, setGeoMsg] = useState<string | null>(null);
 
   // id présent mais recherche introuvable → message clair.
   if (isEdit && !editing) {
@@ -76,6 +89,29 @@ export function SearchEditScreen() {
   const toggle = (arr: string[], v: string, set: (a: string[]) => void) =>
     set(arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]);
 
+  const locate = async () => {
+    const q = `${postalCode} ${city}`.trim();
+    if (!q) {
+      setGeoMsg('Renseignez une ville ou un code postal.');
+      return;
+    }
+    setGeoBusy(true);
+    setGeoMsg(null);
+    try {
+      const r = await geocode(q);
+      if (r) {
+        setCenter({ lat: r.lat, lng: r.lng, label: r.label });
+        setGeoMsg(`📍 ${r.label}`);
+      } else {
+        setGeoMsg('Adresse introuvable.');
+      }
+    } catch (e) {
+      setGeoMsg(e instanceof Error ? e.message : 'Géocodage indisponible.');
+    } finally {
+      setGeoBusy(false);
+    }
+  };
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
@@ -84,8 +120,8 @@ export function SearchEditScreen() {
       sourceIds: sources,
       city: city || null,
       postalCode: postalCode || null,
-      centerLat: editing?.centerLat ?? null,
-      centerLng: editing?.centerLng ?? null,
+      centerLat: center?.lat ?? null,
+      centerLng: center?.lng ?? null,
       radiusKm: toNum(radiusKm),
       priceMin: toNum(priceMin),
       priceMax: toNum(priceMax),
@@ -149,6 +185,22 @@ export function SearchEditScreen() {
               inputMode="decimal"
             />
           </div>
+        </div>
+        <div className="row" style={{ marginBottom: '0.6rem' }}>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => void locate()}
+            disabled={geoBusy}
+          >
+            <MapPin size={15} aria-hidden />{' '}
+            {geoBusy ? 'Localisation…' : 'Localiser la zone'}
+          </button>
+          {geoMsg && (
+            <span className="muted" style={{ fontSize: '0.78rem' }}>
+              {geoMsg}
+            </span>
+          )}
         </div>
 
         <div className="row" style={{ gap: '0.5rem' }}>
