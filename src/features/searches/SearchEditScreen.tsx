@@ -4,6 +4,7 @@ import { MapPin } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { geocode } from '../../lib/geocoder';
 import type { LocalSearch, WatchFrequency } from '../../store/types';
+import { ShareSearch } from './ShareSearch';
 
 const ZonePolygonEditor = lazy(() =>
   import('./ZonePolygonEditor').then(m => ({ default: m.ZonePolygonEditor }))
@@ -151,249 +152,255 @@ export function SearchEditScreen() {
   };
 
   return (
-    <form onSubmit={submit}>
-      <h2 className="section-title">
-        {isEdit ? 'Modifier la recherche' : 'Nouvelle recherche'}
-      </h2>
-      <div className="card">
-        <div className="field">
-          <label htmlFor="name">Nom *</label>
-          <input
-            id="name"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            required
-            placeholder="T3 Lyon presqu’île"
-          />
-        </div>
-        <div className="row" style={{ gap: '0.5rem' }}>
-          <div className="field" style={{ flex: 1 }}>
-            <label htmlFor="city">Ville</label>
+    <>
+      <form onSubmit={submit}>
+        <h2 className="section-title">
+          {isEdit ? 'Modifier la recherche' : 'Nouvelle recherche'}
+        </h2>
+        <div className="card">
+          <div className="field">
+            <label htmlFor="name">Nom *</label>
             <input
-              id="city"
-              value={city}
-              onChange={e => setCity(e.target.value)}
-              placeholder="Lyon"
+              id="name"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              required
+              placeholder="T3 Lyon presqu’île"
             />
           </div>
-          <div className="field" style={{ flex: 1 }}>
-            <label htmlFor="cp">Code postal</label>
-            <input
-              id="cp"
-              value={postalCode}
-              onChange={e => setPostalCode(e.target.value)}
-              placeholder="69007"
-            />
+          <div className="row" style={{ gap: '0.5rem' }}>
+            <div className="field" style={{ flex: 1 }}>
+              <label htmlFor="city">Ville</label>
+              <input
+                id="city"
+                value={city}
+                onChange={e => setCity(e.target.value)}
+                placeholder="Lyon"
+              />
+            </div>
+            <div className="field" style={{ flex: 1 }}>
+              <label htmlFor="cp">Code postal</label>
+              <input
+                id="cp"
+                value={postalCode}
+                onChange={e => setPostalCode(e.target.value)}
+                placeholder="69007"
+              />
+            </div>
+            <div className="field" style={{ width: 90 }}>
+              <label htmlFor="radius">Rayon (km)</label>
+              <input
+                id="radius"
+                value={radiusKm}
+                onChange={e => setRadiusKm(e.target.value)}
+                inputMode="decimal"
+              />
+            </div>
           </div>
-          <div className="field" style={{ width: 90 }}>
-            <label htmlFor="radius">Rayon (km)</label>
-            <input
-              id="radius"
-              value={radiusKm}
-              onChange={e => setRadiusKm(e.target.value)}
-              inputMode="decimal"
-            />
-          </div>
-        </div>
-        <div className="row" style={{ marginBottom: '0.6rem' }}>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => void locate()}
-            disabled={geoBusy}
-          >
-            <MapPin size={15} aria-hidden />{' '}
-            {geoBusy ? 'Localisation…' : 'Localiser la zone'}
-          </button>
-          {geoMsg && (
-            <span className="muted" style={{ fontSize: '0.78rem' }}>
-              {geoMsg}
-            </span>
-          )}
-        </div>
-
-        <div className="field">
-          <div className="row spread">
-            <label style={{ margin: 0 }}>Zone personnalisée (polygone)</label>
+          <div className="row" style={{ marginBottom: '0.6rem' }}>
             <button
               type="button"
               className="btn"
-              style={{ padding: '0.35rem 0.6rem' }}
-              onClick={() => setShowZone(v => !v)}
+              onClick={() => void locate()}
+              disabled={geoBusy}
             >
-              {showZone
-                ? 'Fermer la carte'
-                : polygon
-                  ? 'Modifier la zone'
-                  : 'Dessiner une zone'}
+              <MapPin size={15} aria-hidden />{' '}
+              {geoBusy ? 'Localisation…' : 'Localiser la zone'}
             </button>
-          </div>
-          {polygon && !showZone && (
-            <div className="row" style={{ gap: '0.5rem', marginTop: '0.3rem' }}>
+            {geoMsg && (
               <span className="muted" style={{ fontSize: '0.78rem' }}>
-                Zone définie ({polygon.length} sommets).
+                {geoMsg}
               </span>
+            )}
+          </div>
+
+          <div className="field">
+            <div className="row spread">
+              <label style={{ margin: 0 }}>Zone personnalisée (polygone)</label>
               <button
                 type="button"
                 className="btn"
-                style={{ padding: '0.1rem 0.5rem', fontSize: '0.74rem' }}
-                onClick={() => setPolygon(null)}
+                style={{ padding: '0.35rem 0.6rem' }}
+                onClick={() => setShowZone(v => !v)}
               >
-                Retirer
+                {showZone
+                  ? 'Fermer la carte'
+                  : polygon
+                    ? 'Modifier la zone'
+                    : 'Dessiner une zone'}
               </button>
             </div>
-          )}
-          {showZone && (
-            <Suspense
-              fallback={<div className="empty">Chargement de la carte…</div>}
-            >
-              <ZonePolygonEditor
-                value={polygon}
-                center={center}
-                onChange={setPolygon}
+            {polygon && !showZone && (
+              <div
+                className="row"
+                style={{ gap: '0.5rem', marginTop: '0.3rem' }}
+              >
+                <span className="muted" style={{ fontSize: '0.78rem' }}>
+                  Zone définie ({polygon.length} sommets).
+                </span>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ padding: '0.1rem 0.5rem', fontSize: '0.74rem' }}
+                  onClick={() => setPolygon(null)}
+                >
+                  Retirer
+                </button>
+              </div>
+            )}
+            {showZone && (
+              <Suspense
+                fallback={<div className="empty">Chargement de la carte…</div>}
+              >
+                <ZonePolygonEditor
+                  value={polygon}
+                  center={center}
+                  onChange={setPolygon}
+                />
+              </Suspense>
+            )}
+          </div>
+
+          <div className="row" style={{ gap: '0.5rem' }}>
+            <div className="field" style={{ flex: 1 }}>
+              <label>Budget min</label>
+              <input
+                value={priceMin}
+                onChange={e => setPriceMin(e.target.value)}
+                inputMode="numeric"
+                placeholder="150000"
               />
-            </Suspense>
-          )}
-        </div>
+            </div>
+            <div className="field" style={{ flex: 1 }}>
+              <label>Budget max</label>
+              <input
+                value={priceMax}
+                onChange={e => setPriceMax(e.target.value)}
+                inputMode="numeric"
+                placeholder="280000"
+              />
+            </div>
+          </div>
+          <div className="row" style={{ gap: '0.5rem' }}>
+            <div className="field" style={{ flex: 1 }}>
+              <label>Surface min</label>
+              <input
+                value={surfaceMin}
+                onChange={e => setSurfaceMin(e.target.value)}
+                inputMode="numeric"
+              />
+            </div>
+            <div className="field" style={{ flex: 1 }}>
+              <label>Surface max</label>
+              <input
+                value={surfaceMax}
+                onChange={e => setSurfaceMax(e.target.value)}
+                inputMode="numeric"
+              />
+            </div>
+            <div className="field" style={{ flex: 1 }}>
+              <label>Pièces min</label>
+              <input
+                value={roomsMin}
+                onChange={e => setRoomsMin(e.target.value)}
+                inputMode="numeric"
+              />
+            </div>
+            <div className="field" style={{ flex: 1 }}>
+              <label>Pièces max</label>
+              <input
+                value={roomsMax}
+                onChange={e => setRoomsMax(e.target.value)}
+                inputMode="numeric"
+              />
+            </div>
+          </div>
 
-        <div className="row" style={{ gap: '0.5rem' }}>
-          <div className="field" style={{ flex: 1 }}>
-            <label>Budget min</label>
+          <div className="field">
+            <label>Type de bien</label>
+            <div className="row">
+              {PROPERTY_TYPES.map(t => (
+                <button
+                  type="button"
+                  key={t}
+                  className={`badge ${types.includes(t) ? 'badge-primary' : 'badge-muted'}`}
+                  onClick={() => toggle(types, t, setTypes)}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="field">
+            <label>Sources</label>
+            <div className="row">
+              {SOURCES.map(src => (
+                <button
+                  type="button"
+                  key={src}
+                  className={`badge ${sources.includes(src) ? 'badge-primary' : 'badge-muted'}`}
+                  onClick={() => toggle(sources, src, setSources)}
+                >
+                  {src}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="field">
+            <label htmlFor="kwReq">
+              Mots-clés requis (séparés par des virgules)
+            </label>
             <input
-              value={priceMin}
-              onChange={e => setPriceMin(e.target.value)}
-              inputMode="numeric"
-              placeholder="150000"
+              id="kwReq"
+              value={kwReq}
+              onChange={e => setKwReq(e.target.value)}
+              placeholder="balcon, ascenseur"
             />
           </div>
-          <div className="field" style={{ flex: 1 }}>
-            <label>Budget max</label>
+          <div className="field">
+            <label htmlFor="kwExcl">Mots-clés exclus</label>
             <input
-              value={priceMax}
-              onChange={e => setPriceMax(e.target.value)}
-              inputMode="numeric"
-              placeholder="280000"
+              id="kwExcl"
+              value={kwExcl}
+              onChange={e => setKwExcl(e.target.value)}
+              placeholder="rez-de-chaussée, travaux"
             />
           </div>
-        </div>
-        <div className="row" style={{ gap: '0.5rem' }}>
-          <div className="field" style={{ flex: 1 }}>
-            <label>Surface min</label>
-            <input
-              value={surfaceMin}
-              onChange={e => setSurfaceMin(e.target.value)}
-              inputMode="numeric"
-            />
-          </div>
-          <div className="field" style={{ flex: 1 }}>
-            <label>Surface max</label>
-            <input
-              value={surfaceMax}
-              onChange={e => setSurfaceMax(e.target.value)}
-              inputMode="numeric"
-            />
-          </div>
-          <div className="field" style={{ flex: 1 }}>
-            <label>Pièces min</label>
-            <input
-              value={roomsMin}
-              onChange={e => setRoomsMin(e.target.value)}
-              inputMode="numeric"
-            />
-          </div>
-          <div className="field" style={{ flex: 1 }}>
-            <label>Pièces max</label>
-            <input
-              value={roomsMax}
-              onChange={e => setRoomsMax(e.target.value)}
-              inputMode="numeric"
-            />
-          </div>
-        </div>
 
-        <div className="field">
-          <label>Type de bien</label>
-          <div className="row">
-            {PROPERTY_TYPES.map(t => (
-              <button
-                type="button"
-                key={t}
-                className={`badge ${types.includes(t) ? 'badge-primary' : 'badge-muted'}`}
-                onClick={() => toggle(types, t, setTypes)}
-              >
-                {t}
-              </button>
-            ))}
+          <div className="field">
+            <label htmlFor="freq">Fréquence de surveillance</label>
+            <select
+              id="freq"
+              value={frequency}
+              onChange={e => setFrequency(e.target.value as WatchFrequency)}
+            >
+              <option value="hourly">Toutes les heures</option>
+              <option value="daily">Quotidienne</option>
+              <option value="manual">Manuelle</option>
+            </select>
+          </div>
+
+          <div className="row" style={{ gap: '0.5rem' }}>
+            <Link
+              to="/recherches"
+              className="btn"
+              style={{ flex: 1, justifyContent: 'center' }}
+            >
+              Annuler
+            </Link>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              style={{ flex: 2, justifyContent: 'center' }}
+            >
+              {isEdit ? 'Enregistrer les modifications' : 'Créer la recherche'}
+            </button>
           </div>
         </div>
-
-        <div className="field">
-          <label>Sources</label>
-          <div className="row">
-            {SOURCES.map(src => (
-              <button
-                type="button"
-                key={src}
-                className={`badge ${sources.includes(src) ? 'badge-primary' : 'badge-muted'}`}
-                onClick={() => toggle(sources, src, setSources)}
-              >
-                {src}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="field">
-          <label htmlFor="kwReq">
-            Mots-clés requis (séparés par des virgules)
-          </label>
-          <input
-            id="kwReq"
-            value={kwReq}
-            onChange={e => setKwReq(e.target.value)}
-            placeholder="balcon, ascenseur"
-          />
-        </div>
-        <div className="field">
-          <label htmlFor="kwExcl">Mots-clés exclus</label>
-          <input
-            id="kwExcl"
-            value={kwExcl}
-            onChange={e => setKwExcl(e.target.value)}
-            placeholder="rez-de-chaussée, travaux"
-          />
-        </div>
-
-        <div className="field">
-          <label htmlFor="freq">Fréquence de surveillance</label>
-          <select
-            id="freq"
-            value={frequency}
-            onChange={e => setFrequency(e.target.value as WatchFrequency)}
-          >
-            <option value="hourly">Toutes les heures</option>
-            <option value="daily">Quotidienne</option>
-            <option value="manual">Manuelle</option>
-          </select>
-        </div>
-
-        <div className="row" style={{ gap: '0.5rem' }}>
-          <Link
-            to="/recherches"
-            className="btn"
-            style={{ flex: 1, justifyContent: 'center' }}
-          >
-            Annuler
-          </Link>
-          <button
-            type="submit"
-            className="btn btn-primary"
-            style={{ flex: 2, justifyContent: 'center' }}
-          >
-            {isEdit ? 'Enregistrer les modifications' : 'Créer la recherche'}
-          </button>
-        </div>
-      </div>
-    </form>
+      </form>
+      {isEdit && editing && <ShareSearch searchId={editing.id} />}
+    </>
   );
 }
