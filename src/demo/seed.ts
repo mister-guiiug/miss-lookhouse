@@ -5,6 +5,16 @@
  */
 import type { AppData, LocalListing } from '../store/types';
 
+// Vignettes de DÉMO autoportantes (SVG en data-URI : pas de réseau, RGPD-safe).
+function photo(label: string, color: string): string {
+  const svg =
+    `<svg xmlns='http://www.w3.org/2000/svg' width='480' height='360'>` +
+    `<rect width='480' height='360' fill='${color}'/>` +
+    `<text x='240' y='195' font-family='sans-serif' font-size='30' ` +
+    `fill='white' text-anchor='middle'>${label}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
 function listing(
   p: Partial<LocalListing> & {
     id: string;
@@ -58,6 +68,12 @@ const L1 = listing({
   contactName: 'Agence Démo Lyon',
   publishedAt: '2026-06-12T08:00:00.000Z',
   phashes: ['ffe7c3810000183c'],
+  mediaUrls: [
+    photo('Salon', '#0f766e'),
+    photo('Cuisine', '#14b8a6'),
+    photo('Balcon', '#15803d'),
+    photo('Chambre', '#115e59'),
+  ],
   relevanceScore: 88,
   clusterId: 'demo-c1',
   priceHistory: [
@@ -117,6 +133,11 @@ const L3 = listing({
   publishedAt: '2026-06-20T08:00:00.000Z',
   firstSeenAt: '2026-06-20T08:00:00.000Z',
   phashes: ['0f1e2d3c4b5a6978'],
+  mediaUrls: [
+    photo('Façade', '#3b4cca'),
+    photo('Jardin', '#15803d'),
+    photo('Séjour', '#0f766e'),
+  ],
   relevanceScore: 71,
   priceHistory: [{ observedAt: '2026-06-20T08:00:00.000Z', price: 420000 }],
 });

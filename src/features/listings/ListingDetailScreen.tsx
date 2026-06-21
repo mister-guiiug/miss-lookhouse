@@ -13,6 +13,7 @@ import { freshnessScore } from '../../domain/scoring';
 import { summarizePriceSeries } from '../../domain/priceHistory';
 import type { UserStatus } from '../../store/types';
 import { VerificationCard } from './VerificationCard';
+import { MediaGallery } from './MediaGallery';
 
 const QUICK_TAGS = ['à visiter', 'négociable', 'lumineux', 'travaux', 'rare'];
 
@@ -129,6 +130,8 @@ export function ListingDetailScreen() {
           </p>
         )}
       </div>
+
+      <MediaGallery urls={listing.mediaUrls ?? []} />
 
       {/* Qualification */}
       <div className="card">
