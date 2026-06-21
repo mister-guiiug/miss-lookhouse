@@ -30,7 +30,7 @@ inoffensive car **toute la sécurité est appliquée ici**, jamais par le client
   `SUPABASE_DB_PASSWORD`.
 
 Ordre : `0001_schema` → `0002_rls` → `0003_seed` (référentiel sources) →
-`0004_scheduling` (pg_cron + pg_net).
+`0004_scheduling` (pg_cron + pg_net) → `0005_notifications_dispatch`.
 
 ## 3. Storage
 
@@ -47,9 +47,15 @@ politiques storage de `0002_rls.sql` s'activent automatiquement si le bucket exi
 
 ## 5. Edge Functions
 
+`ingest-run` réutilise le **cœur métier partagé** (`_shared/core`, généré depuis
+`src/` par `npm run build:edge-core`) : la MÊME normalisation (`parseListings`) et
+le MÊME plan (`planIngestion`) que le front. Régénérer avant tout déploiement si
+`src/domain` ou `src/ingestion/{pipeline,schema,fieldMap}` a changé.
+
 ```bash
-supabase functions deploy ingest-run
-supabase functions deploy notify
+npm run build:edge-core          # régénère supabase/functions/_shared/core (NE PAS éditer la copie)
+supabase functions deploy ingest-run --no-verify-jwt
+supabase functions deploy notify --no-verify-jwt
 ```
 
 Secrets (jamais dans le code) :
@@ -58,6 +64,26 @@ Secrets (jamais dans le code) :
 supabase secrets set INGEST_TOKEN="<jeton aléatoire long>"
 # SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY sont injectés automatiquement.
 ```
+
+### Connecteurs `authorized_api` (collecte automatique responsable)
+
+`ingest-run` ne collecte QUE via des connecteurs déclarés par l'utilisateur
+(`source_connectors`, `mode = 'authorized_api'`). Pour chaque recherche due, il
+appelle l'URL configurée, normalise via le cœur partagé, puis applique le plan
+(insert/maj + versions + historique de prix par trigger + similarité +
+notifications). **Aucun portail n'est scrapé.** Forme de `config` (jsonb) :
+
+| Clé                         | Rôle                                                       |
+| --------------------------- | ---------------------------------------------------------- |
+| `url`                       | **https** obligatoire — l'endpoint d'API autorisé          |
+| `method`                    | `GET` par défaut                                           |
+| `headers`                   | en-têtes additionnels (optionnel)                          |
+| `listPath`                  | chemin pointé vers le tableau (`data.items`) ; déf. racine |
+| `map`                       | mappage `champ → chemin` (ex. `{"externalId":"id"}`)       |
+| `authHeader` / `authScheme` | pour le secret (déf. `Authorization` / `Bearer`)           |
+
+Un éventuel jeton d'API est un **secret d'Edge Function** référencé par
+`source_connectors.secret_ref` (jamais sa valeur en base).
 
 ## 6. Planification horaire (pg_cron → pg_net → ingest-run)
 
@@ -105,6 +131,9 @@ VITE_VAPID_PUBLIC_KEY=<clé publique VAPID>
 - **Web Push** : la signature VAPID + le chiffrement aes128gcm restent à
   implémenter dans `notify` (le webhook est fonctionnel).
 - **E-mail** : brancher un fournisseur SMTP/API.
-- **Partage du cœur métier** : `src/domain` + `src/ingestion` doivent être
-  extraits en package commun importable par les Edge Functions (Deno) pour
-  rejouer exactement la même logique de scoring/dédup côté serveur.
+- **Cœur métier partagé** : ✅ fait — `_shared/core` est généré depuis `src/`
+  (`npm run build:edge-core`) et `ingest-run` rejoue exactement la même logique de
+  normalisation/scoring/dédup que le front (validé en live).
+- **Médias serveur** : `ingest-run` n'enregistre pas encore les `listing_media`
+  (URL/phash) ni ne recharge les phash existants → la similarité **image** n'est
+  pas encore exploitée côté serveur (le reste de la similarité l'est).
