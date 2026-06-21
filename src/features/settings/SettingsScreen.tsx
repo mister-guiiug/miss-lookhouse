@@ -1,4 +1,5 @@
-import { Download, LogOut, Mail, RotateCcw, Send } from 'lucide-react';
+import { Download, LogOut, Mail, RotateCcw, Rss, Send } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { PushToggle } from './PushToggle';
 import { useAppStore } from '../../store/useAppStore';
 import { BACKEND, IS_SUPABASE } from '../../backend/config';
@@ -66,6 +67,22 @@ export function SettingsScreen() {
           <span className="badge badge-muted">optionnel</span>
         </div>
       </div>
+
+      {IS_SUPABASE && user && (
+        <>
+          <h2 className="section-title">Collecte automatique</h2>
+          <div className="card">
+            <p className="muted" style={{ marginTop: 0, fontSize: '0.84rem' }}>
+              Configurez des connecteurs d’<strong>API / flux autorisés</strong>{' '}
+              pour collecter automatiquement (toutes les heures), de façon
+              responsable. Aucun scraping de portail.
+            </p>
+            <Link to="/connecteurs" className="btn">
+              <Rss size={16} aria-hidden /> Gérer les connecteurs
+            </Link>
+          </div>
+        </>
+      )}
 
       <h2 className="section-title">Mes données (RGPD)</h2>
       <div className="card">
