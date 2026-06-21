@@ -76,6 +76,8 @@ export default defineConfig(({ command }) => {
         includeAssets: ['favicon.svg', 'robots.txt'],
         workbox: {
           globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,webmanifest}'],
+          // Handler Web Push (push/notificationclick) ajouté au SW généré.
+          importScripts: ['push-sw.js'],
           // Le shell est mis en cache ; les appels API (Supabase) restent réseau.
           navigateFallbackDenylist: [/^\/auth/, /supabase\.co/],
         },

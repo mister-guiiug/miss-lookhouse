@@ -1,13 +1,6 @@
-import {
-  Download,
-  LogOut,
-  Mail,
-  RotateCcw,
-  Rss,
-  Send,
-  Smartphone,
-} from 'lucide-react';
+import { Download, LogOut, Mail, RotateCcw, Rss, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { PushToggle } from './PushToggle';
 import { useAppStore } from '../../store/useAppStore';
 import { BACKEND, IS_SUPABASE } from '../../backend/config';
 import { useAuth } from '../../auth/useAuth';
@@ -58,14 +51,7 @@ export function SettingsScreen() {
           Supabase (clé VAPID publique + Edge Function). En mode démo, les
           alertes restent <strong>in-app</strong>.
         </p>
-        <div className="row spread">
-          <span className="row">
-            <Smartphone size={16} aria-hidden /> Push web (PWA)
-          </span>
-          <span className="badge badge-muted">
-            {BACKEND === 'supabase' ? 'disponible' : 'backend requis'}
-          </span>
-        </div>
+        <PushToggle />
         <div className="row spread" style={{ marginTop: '0.4rem' }}>
           <span className="row">
             <Mail size={16} aria-hidden /> E-mail (résumé)
