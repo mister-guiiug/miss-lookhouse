@@ -3,6 +3,7 @@ import { Telescope } from 'lucide-react';
 import { BottomNav } from './BottomNav';
 import { Footer } from './Footer';
 import { ThemeToggle } from './ThemeToggle';
+import { HeaderMenu } from './HeaderMenu';
 
 export function Layout() {
   return (
@@ -12,8 +13,9 @@ export function Layout() {
           <Telescope size={20} color="var(--primary)" aria-hidden />
           Miss LookHouse
         </h1>
-        <div style={{ marginLeft: 'auto' }}>
+        <div className="row" style={{ marginLeft: 'auto', gap: '0.4rem' }}>
           <ThemeToggle />
+          <HeaderMenu />
         </div>
       </header>
       <main className="app-main">

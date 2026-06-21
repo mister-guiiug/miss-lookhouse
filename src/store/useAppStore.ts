@@ -51,6 +51,7 @@ interface AppState {
     }
   ) => void;
   markNotificationRead: (id: string) => void;
+  markNotificationUnread: (id: string) => void;
   markAllRead: () => void;
   addSearch: (s: Omit<LocalSearch, 'id'>) => string;
   deleteSearch: (id: string) => void;
@@ -369,6 +370,16 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const now = new Date().toISOString();
     const notifications = data.notifications.map(n =>
       n.id === id ? { ...n, readAt: n.readAt ?? now } : n
+    );
+    const nextData: AppData = { ...data, notifications };
+    set({ data: nextData });
+    saveState(nextData);
+  },
+
+  markNotificationUnread: id => {
+    const { data } = get();
+    const notifications = data.notifications.map(n =>
+      n.id === id ? { ...n, readAt: null } : n
     );
     const nextData: AppData = { ...data, notifications };
     set({ data: nextData });
