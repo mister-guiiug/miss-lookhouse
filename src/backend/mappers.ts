@@ -10,6 +10,7 @@ import type {
   LocalNotification,
   LocalSearch,
   LocalSimilarity,
+  LocalVerification,
   PricePoint,
   UserStatus,
   WatchFrequency,
@@ -113,6 +114,17 @@ export interface NoteRow {
   id: string;
   listing_id: string;
   body: string;
+  created_at: string;
+}
+
+export interface VerificationRow {
+  id: string;
+  listing_id: string;
+  verified: boolean;
+  confidence: number | null;
+  checklist: Record<string, boolean> | null;
+  anomalies: string[] | null;
+  flagged_reason: string | null;
   created_at: string;
 }
 
@@ -230,6 +242,24 @@ export function noteFromRow(r: NoteRow): {
   return {
     listingId: r.listing_id,
     note: { id: r.id, body: r.body, createdAt: r.created_at },
+  };
+}
+
+export function verificationFromRow(r: VerificationRow): {
+  listingId: string;
+  verification: LocalVerification;
+} {
+  return {
+    listingId: r.listing_id,
+    verification: {
+      id: r.id,
+      verified: r.verified,
+      confidence: r.confidence,
+      checklist: r.checklist ?? {},
+      anomalies: r.anomalies ?? [],
+      flaggedReason: r.flagged_reason,
+      createdAt: r.created_at,
+    },
   };
 }
 

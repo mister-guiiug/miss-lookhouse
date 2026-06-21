@@ -8,7 +8,13 @@
  * le composant. Cf. mémoire « zustand-selecteurs-stables ».
  */
 import { create } from 'zustand';
-import type { AppData, LocalListing, LocalSearch, UserStatus } from './types';
+import type {
+  AppData,
+  LocalListing,
+  LocalSearch,
+  LocalVerification,
+  UserStatus,
+} from './types';
 import type { SearchCriteria } from '../domain/types';
 import { relevanceScore } from '../domain/scoring';
 import { planIngestion } from '../ingestion/pipeline';
@@ -38,9 +44,22 @@ interface AppState {
   setStatus: (listingId: string, status: UserStatus) => void;
   toggleTag: (listingId: string, tag: string) => void;
   addNote: (listingId: string, body: string) => void;
+  addVerification: (
+    listingId: string,
+    payload: {
+      verified: boolean;
+      confidence?: number | null;
+      checklist?: Record<string, boolean>;
+      anomalies?: string[];
+      flaggedReason?: string | null;
+    }
+  ) => void;
   markNotificationRead: (id: string) => void;
+  markNotificationUnread: (id: string) => void;
   markAllRead: () => void;
   addSearch: (s: Omit<LocalSearch, 'id'>) => string;
+  updateSearch: (id: string, patch: Partial<Omit<LocalSearch, 'id'>>) => void;
+  setSearchActive: (id: string, active: boolean) => void;
   deleteSearch: (id: string) => void;
   runSearchNow: (id: string) => void;
   resetDemo: () => void;
@@ -54,6 +73,7 @@ function emptyData(): AppData {
     similarities: [],
     statuses: {},
     notes: {},
+    verifications: {},
   };
 }
 
@@ -111,9 +131,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
   init: () => {
     if (get().ready) return;
     const persisted = loadState();
-    // En mode Supabase, on démarre vide (les données viennent du serveur via
-    // SupabaseSync) ; en local, on sème la démo au premier lancement.
-    const data = persisted ?? (IS_SUPABASE ? emptyData() : demoState());
+    // En mode Supabase, on démarre vide (données du serveur via SupabaseSync) ;
+    // en local, on sème la démo au premier lancement.
+    const base = persisted ?? (IS_SUPABASE ? emptyData() : demoState());
+    // Normalise les états persistés antérieurs à l'ajout des vérifications.
+    const data: AppData = { ...base, verifications: base.verifications ?? {} };
     if (!persisted) saveState(data);
     const theme = initialTheme();
     applyTheme(theme);
@@ -264,6 +286,40 @@ export const useAppStore = create<AppState>()((set, get) => ({
     return { added, updated, warnings: res.warnings };
   },
 
+  addVerification: (listingId, payload) => {
+    const { data } = get();
+    const existing = data.verifications[listingId] ?? [];
+    const entry: LocalVerification = {
+      id: makeId('vrf'),
+      verified: payload.verified,
+      confidence: payload.confidence ?? null,
+      checklist: payload.checklist ?? {},
+      anomalies: payload.anomalies ?? [],
+      flaggedReason: payload.flaggedReason ?? null,
+      createdAt: new Date().toISOString(),
+    };
+    // Une vérification positive promeut le statut à « vérifiée » ; la présence
+    // d'anomalies bascule en « suspecte » (sans écraser une qualification forte).
+    const tags = data.statuses[listingId]?.tags ?? [];
+    let statuses = data.statuses;
+    if (payload.verified) {
+      statuses = { ...statuses, [listingId]: { status: 'verifiee', tags } };
+    } else if ((payload.anomalies?.length ?? 0) > 0) {
+      statuses = { ...statuses, [listingId]: { status: 'suspecte', tags } };
+    }
+    const nextData: AppData = {
+      ...data,
+      verifications: {
+        ...data.verifications,
+        [listingId]: [entry, ...existing],
+      },
+      statuses,
+    };
+    set({ data: nextData });
+    saveState(nextData);
+    emitSync({ kind: 'addVerification', listingId, verification: entry });
+  },
+
   setStatus: (listingId, status) => {
     const { data } = get();
     const prev = data.statuses[listingId];
@@ -332,6 +388,17 @@ export const useAppStore = create<AppState>()((set, get) => ({
     emitSync({ kind: 'setNotificationRead', id, readAt: now });
   },
 
+  markNotificationUnread: id => {
+    const { data } = get();
+    const notifications = data.notifications.map(n =>
+      n.id === id ? { ...n, readAt: null } : n
+    );
+    const nextData: AppData = { ...data, notifications };
+    set({ data: nextData });
+    saveState(nextData);
+    emitSync({ kind: 'setNotificationRead', id, readAt: null });
+  },
+
   markAllRead: () => {
     const { data } = get();
     const now = new Date().toISOString();
@@ -360,6 +427,34 @@ export const useAppStore = create<AppState>()((set, get) => ({
     saveState(nextData);
     emitSync({ kind: 'upsertSearch', search });
     return id;
+  },
+
+  updateSearch: (id, patch) => {
+    const { data } = get();
+    let updated: LocalSearch | undefined;
+    const searches = data.searches.map(s => {
+      if (s.id !== id) return s;
+      updated = { ...s, ...patch };
+      return updated;
+    });
+    const nextData: AppData = { ...data, searches };
+    set({ data: nextData });
+    saveState(nextData);
+    if (updated) emitSync({ kind: 'upsertSearch', search: updated });
+  },
+
+  setSearchActive: (id, active) => {
+    const { data } = get();
+    let updated: LocalSearch | undefined;
+    const searches = data.searches.map(s => {
+      if (s.id !== id) return s;
+      updated = { ...s, active };
+      return updated;
+    });
+    const nextData: AppData = { ...data, searches };
+    set({ data: nextData });
+    saveState(nextData);
+    if (updated) emitSync({ kind: 'upsertSearch', search: updated });
   },
 
   deleteSearch: id => {

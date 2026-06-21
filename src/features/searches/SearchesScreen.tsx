@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom';
-import { Plus, Trash2, Clock } from 'lucide-react';
+import { Clock, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { formatPrice } from '../../lib/format';
 
 export function SearchesScreen() {
   const searches = useAppStore(s => s.data.searches);
+  const setSearchActive = useAppStore(s => s.setSearchActive);
   const deleteSearch = useAppStore(s => s.deleteSearch);
 
   return (
@@ -26,14 +27,27 @@ export function SearchesScreen() {
         </div>
       ) : (
         searches.map(s => (
-          <div key={s.id} className="card">
+          <div
+            key={s.id}
+            className="card"
+            style={{ opacity: s.active ? 1 : 0.7 }}
+          >
             <div className="row spread">
               <p className="h-title">{s.name}</p>
-              <span
+              <button
+                type="button"
+                role="switch"
+                aria-checked={s.active}
+                aria-label={
+                  s.active
+                    ? 'Désactiver la surveillance'
+                    : 'Activer la surveillance'
+                }
                 className={`badge ${s.active ? 'badge-ok' : 'badge-muted'}`}
+                onClick={() => setSearchActive(s.id, !s.active)}
               >
                 {s.active ? 'Active' : 'Inactive'}
-              </span>
+              </button>
             </div>
             <div
               className="muted"
@@ -59,17 +73,32 @@ export function SearchesScreen() {
                   {src}
                 </span>
               ))}
-              <button
-                className="btn"
-                style={{ marginLeft: 'auto', padding: '0.35rem 0.6rem' }}
-                onClick={() => {
-                  if (confirm(`Supprimer la recherche « ${s.name} » ?`))
-                    deleteSearch(s.id);
-                }}
-                aria-label="Supprimer"
+              <div
+                className="row"
+                style={{ marginLeft: 'auto', gap: '0.4rem' }}
               >
-                <Trash2 size={15} aria-hidden />
-              </button>
+                <Link
+                  to={`/recherches/${s.id}/modifier`}
+                  className="btn"
+                  style={{ padding: '0.35rem 0.6rem' }}
+                  aria-label="Modifier"
+                >
+                  <Pencil size={15} aria-hidden />
+                </Link>
+                <button
+                  className="btn"
+                  style={{ padding: '0.35rem 0.6rem' }}
+                  onClick={() => {
+                    if (
+                      window.confirm(`Supprimer la recherche « ${s.name} » ?`)
+                    )
+                      deleteSearch(s.id);
+                  }}
+                  aria-label="Supprimer"
+                >
+                  <Trash2 size={15} aria-hidden />
+                </button>
+              </div>
             </div>
           </div>
         ))

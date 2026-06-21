@@ -10,6 +10,7 @@ import type {
   ListingNote,
   ListingStatusEntry,
   LocalSearch,
+  LocalVerification,
 } from '../store/types';
 import {
   listingFromRow,
@@ -19,6 +20,7 @@ import {
   searchToRow,
   similarityFromRow,
   statusFromRow,
+  verificationFromRow,
   type ListingRow,
   type NoteRow,
   type NotificationRow,
@@ -26,6 +28,7 @@ import {
   type SearchRow,
   type SimilarityRow,
   type StatusRow,
+  type VerificationRow,
 } from './mappers';
 
 /** Lit l'intégralité des données de l'utilisateur courant (arbitré par la RLS). */
@@ -38,6 +41,7 @@ export async function pullAll(supabase: SupabaseClient): Promise<AppData> {
     similarities,
     statuses,
     notes,
+    verifications,
   ] = await Promise.all([
     supabase.from('saved_searches').select('*'),
     supabase.from('listings').select('*'),
@@ -56,6 +60,12 @@ export async function pullAll(supabase: SupabaseClient): Promise<AppData> {
       .from('listing_notes')
       .select('*')
       .order('created_at', { ascending: false }),
+    supabase
+      .from('listing_verifications')
+      .select(
+        'id, listing_id, verified, confidence, checklist, anomalies, flagged_reason, created_at'
+      )
+      .order('created_at', { ascending: false }),
   ]);
 
   const failed = [
@@ -66,6 +76,7 @@ export async function pullAll(supabase: SupabaseClient): Promise<AppData> {
     similarities,
     statuses,
     notes,
+    verifications,
   ].find(r => r.error);
   if (failed?.error) throw new Error(failed.error.message);
 
@@ -85,6 +96,14 @@ export async function pullAll(supabase: SupabaseClient): Promise<AppData> {
     noteMap[m.listingId] = list;
   }
 
+  const verifMap: Record<string, LocalVerification[]> = {};
+  for (const row of (verifications.data ?? []) as VerificationRow[]) {
+    const m = verificationFromRow(row);
+    const list = verifMap[m.listingId] ?? [];
+    list.push(m.verification);
+    verifMap[m.listingId] = list;
+  }
+
   return {
     searches: ((searches.data ?? []) as SearchRow[]).map(searchFromRow),
     listings: ((listings.data ?? []) as ListingRow[]).map(r =>
@@ -98,6 +117,7 @@ export async function pullAll(supabase: SupabaseClient): Promise<AppData> {
     ),
     statuses: statusMap,
     notes: noteMap,
+    verifications: verifMap,
   };
 }
 
@@ -161,5 +181,25 @@ export async function setNotificationRead(
     .from('notifications')
     .update({ read_at: readAt })
     .eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+export async function addVerificationRemote(
+  supabase: SupabaseClient,
+  userId: string,
+  listingId: string,
+  v: LocalVerification
+): Promise<void> {
+  const { error } = await supabase.from('listing_verifications').insert({
+    id: v.id,
+    user_id: userId,
+    listing_id: listingId,
+    verified: v.verified,
+    confidence: v.confidence,
+    checklist: v.checklist,
+    anomalies: v.anomalies,
+    flagged_reason: v.flaggedReason ?? null,
+    created_at: v.createdAt,
+  });
   if (error) throw new Error(error.message);
 }

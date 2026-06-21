@@ -8,6 +8,7 @@ import type {
   ListingNote,
   ListingStatusEntry,
   LocalSearch,
+  LocalVerification,
 } from '../store/types';
 
 export type SyncIntent =
@@ -15,7 +16,12 @@ export type SyncIntent =
   | { kind: 'deleteSearch'; id: string }
   | { kind: 'upsertStatus'; listingId: string; entry: ListingStatusEntry }
   | { kind: 'addNote'; listingId: string; note: ListingNote }
-  | { kind: 'setNotificationRead'; id: string; readAt: string | null };
+  | { kind: 'setNotificationRead'; id: string; readAt: string | null }
+  | {
+      kind: 'addVerification';
+      listingId: string;
+      verification: LocalVerification;
+    };
 
 type Listener = (intent: SyncIntent) => void;
 

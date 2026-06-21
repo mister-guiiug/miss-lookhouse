@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAppStore } from '../../store/useAppStore';
-import type { WatchFrequency } from '../../store/types';
+import type { LocalSearch, WatchFrequency } from '../../store/types';
 
 const PROPERTY_TYPES = [
   'appartement',
@@ -17,6 +17,9 @@ function toNum(v: string): number | null {
   const n = Number(v.replace(',', '.'));
   return v.trim() === '' || Number.isNaN(n) ? null : n;
 }
+function numStr(n: number | null | undefined): string {
+  return n == null ? '' : String(n);
+}
 function splitKeywords(v: string): string[] {
   return v
     .split(',')
@@ -24,25 +27,51 @@ function splitKeywords(v: string): string[] {
     .filter(Boolean);
 }
 
+/** Création OU modification d'une recherche selon la présence d'un id en route. */
 export function SearchEditScreen() {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const searches = useAppStore(s => s.data.searches);
   const addSearch = useAppStore(s => s.addSearch);
+  const updateSearch = useAppStore(s => s.updateSearch);
 
-  const [name, setName] = useState('');
-  const [city, setCity] = useState('');
-  const [postalCode, setPostalCode] = useState('');
-  const [radiusKm, setRadiusKm] = useState('5');
-  const [priceMin, setPriceMin] = useState('');
-  const [priceMax, setPriceMax] = useState('');
-  const [surfaceMin, setSurfaceMin] = useState('');
-  const [surfaceMax, setSurfaceMax] = useState('');
-  const [roomsMin, setRoomsMin] = useState('');
-  const [roomsMax, setRoomsMax] = useState('');
-  const [types, setTypes] = useState<string[]>(['appartement']);
-  const [sources, setSources] = useState<string[]>(['leboncoin', 'seloger']);
-  const [kwReq, setKwReq] = useState('');
-  const [kwExcl, setKwExcl] = useState('');
-  const [frequency, setFrequency] = useState<WatchFrequency>('hourly');
+  const editing = id ? searches.find(s => s.id === id) : undefined;
+  const isEdit = Boolean(id);
+
+  const [name, setName] = useState(editing?.name ?? '');
+  const [city, setCity] = useState(editing?.city ?? '');
+  const [postalCode, setPostalCode] = useState(editing?.postalCode ?? '');
+  const [radiusKm, setRadiusKm] = useState(numStr(editing?.radiusKm) || '5');
+  const [priceMin, setPriceMin] = useState(numStr(editing?.priceMin));
+  const [priceMax, setPriceMax] = useState(numStr(editing?.priceMax));
+  const [surfaceMin, setSurfaceMin] = useState(numStr(editing?.surfaceMin));
+  const [surfaceMax, setSurfaceMax] = useState(numStr(editing?.surfaceMax));
+  const [roomsMin, setRoomsMin] = useState(numStr(editing?.roomsMin));
+  const [roomsMax, setRoomsMax] = useState(numStr(editing?.roomsMax));
+  const [types, setTypes] = useState<string[]>(
+    editing?.propertyTypes ?? ['appartement']
+  );
+  const [sources, setSources] = useState<string[]>(
+    editing?.sourceIds ?? ['leboncoin', 'seloger']
+  );
+  const [kwReq, setKwReq] = useState(
+    (editing?.keywordsRequired ?? []).join(', ')
+  );
+  const [kwExcl, setKwExcl] = useState(
+    (editing?.keywordsExcluded ?? []).join(', ')
+  );
+  const [frequency, setFrequency] = useState<WatchFrequency>(
+    editing?.frequency ?? 'hourly'
+  );
+
+  // id présent mais recherche introuvable → message clair.
+  if (isEdit && !editing) {
+    return (
+      <div className="empty">
+        Recherche introuvable. <Link to="/recherches">Retour</Link>
+      </div>
+    );
+  }
 
   const toggle = (arr: string[], v: string, set: (a: string[]) => void) =>
     set(arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v]);
@@ -50,13 +79,13 @@ export function SearchEditScreen() {
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    addSearch({
+    const payload: Omit<LocalSearch, 'id'> = {
       name: name.trim(),
       sourceIds: sources,
       city: city || null,
       postalCode: postalCode || null,
-      centerLat: null,
-      centerLng: null,
+      centerLat: editing?.centerLat ?? null,
+      centerLng: editing?.centerLng ?? null,
       radiusKm: toNum(radiusKm),
       priceMin: toNum(priceMin),
       priceMax: toNum(priceMax),
@@ -68,15 +97,19 @@ export function SearchEditScreen() {
       keywordsRequired: splitKeywords(kwReq),
       keywordsExcluded: splitKeywords(kwExcl),
       frequency,
-      active: true,
-      lastRunAt: null,
-    });
+      active: editing?.active ?? true,
+      lastRunAt: editing?.lastRunAt ?? null,
+    };
+    if (editing) updateSearch(editing.id, payload);
+    else addSearch(payload);
     navigate('/recherches');
   };
 
   return (
     <form onSubmit={submit}>
-      <h2 className="section-title">Nouvelle recherche</h2>
+      <h2 className="section-title">
+        {isEdit ? 'Modifier la recherche' : 'Nouvelle recherche'}
+      </h2>
       <div className="card">
         <div className="field">
           <label htmlFor="name">Nom *</label>
@@ -239,13 +272,22 @@ export function SearchEditScreen() {
           </select>
         </div>
 
-        <button
-          type="submit"
-          className="btn btn-primary"
-          style={{ width: '100%', justifyContent: 'center' }}
-        >
-          Créer la recherche
-        </button>
+        <div className="row" style={{ gap: '0.5rem' }}>
+          <Link
+            to="/recherches"
+            className="btn"
+            style={{ flex: 1, justifyContent: 'center' }}
+          >
+            Annuler
+          </Link>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            style={{ flex: 2, justifyContent: 'center' }}
+          >
+            {isEdit ? 'Enregistrer les modifications' : 'Créer la recherche'}
+          </button>
+        </div>
       </div>
     </form>
   );

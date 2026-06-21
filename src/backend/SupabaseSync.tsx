@@ -12,6 +12,7 @@ import { useAppStore } from '../store/useAppStore';
 import { onSync, type SyncIntent } from './syncBus';
 import {
   addNoteRemote,
+  addVerificationRemote,
   deleteSearchRemote,
   pullAll,
   setNotificationRead,
@@ -97,6 +98,14 @@ export function SupabaseSync() {
             break;
           case 'setNotificationRead':
             await setNotificationRead(supabase, intent.id, intent.readAt);
+            break;
+          case 'addVerification':
+            await addVerificationRemote(
+              supabase,
+              userId,
+              intent.listingId,
+              intent.verification
+            );
             break;
         }
       } catch (e) {
