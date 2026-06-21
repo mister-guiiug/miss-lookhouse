@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Miss LookHouse">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#14b8a6" />
+      <stop offset="1" stop-color="#0f766e" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#g)" />
+  <!-- Maison -->
+  <path
+    d="M256 120 124 232v168a16 16 0 0 0 16 16h84V312h64v104h84a16 16 0 0 0 16-16V232z"
+    fill="#ecfeff"
+    opacity="0.95"
+  />
+  <!-- Loupe (veille) -->
+  <circle cx="320" cy="300" r="58" fill="none" stroke="#0f766e" stroke-width="22" />
+  <line
+    x1="360"
+    y1="340"
+    x2="404"
+    y2="384"
+    stroke="#0f766e"
+    stroke-width="26"
+    stroke-linecap="round"
+  />
+</svg>

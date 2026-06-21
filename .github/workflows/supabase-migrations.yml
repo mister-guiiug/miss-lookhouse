@@ -1,0 +1,35 @@
+# Applique les migrations Supabase (forward-only) à chaque fusion sur main qui
+# touche supabase/migrations/**, et au déclenchement manuel.
+# Secrets requis (Settings → Secrets and variables → Actions) :
+#   SUPABASE_ACCESS_TOKEN  (Account → Access Tokens — À ROTATER s'il a fuité)
+#   SUPABASE_PROJECT_ID    (Project Settings → General → Reference ID)
+#   SUPABASE_DB_PASSWORD   (Project Settings → Database)
+name: Supabase migrations
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - '.github/workflows/supabase-migrations.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Push migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          supabase link --project-ref "$SUPABASE_PROJECT_ID"
+          supabase db push
+        # `db push` est forward-only : seules les migrations non appliquées sont jouées.
