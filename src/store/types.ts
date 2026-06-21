@@ -94,6 +94,17 @@ export interface ListingNote {
   createdAt: string;
 }
 
+/** Enregistrement de vérification métier (historisé). */
+export interface LocalVerification {
+  id: string;
+  verified: boolean;
+  confidence: number | null;
+  checklist: Record<string, boolean>;
+  anomalies: string[];
+  flaggedReason?: string | null;
+  createdAt: string;
+}
+
 export interface AppData {
   searches: LocalSearch[];
   listings: LocalListing[];
@@ -101,4 +112,5 @@ export interface AppData {
   similarities: LocalSimilarity[];
   statuses: Record<string, ListingStatusEntry>;
   notes: Record<string, ListingNote[]>;
+  verifications: Record<string, LocalVerification[]>;
 }

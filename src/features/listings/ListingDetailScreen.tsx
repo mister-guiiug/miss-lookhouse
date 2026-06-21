@@ -12,6 +12,7 @@ import {
 import { freshnessScore } from '../../domain/scoring';
 import { summarizePriceSeries } from '../../domain/priceHistory';
 import type { UserStatus } from '../../store/types';
+import { VerificationCard } from './VerificationCard';
 
 const QUICK_TAGS = ['à visiter', 'négociable', 'lumineux', 'travaux', 'rare'];
 
@@ -222,6 +223,9 @@ export function ListingDetailScreen() {
           )}
         </div>
       )}
+
+      {/* Vérification métier */}
+      <VerificationCard listingId={listing.id} />
 
       {/* Notes */}
       <div className="card">

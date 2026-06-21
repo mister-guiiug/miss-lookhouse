@@ -8,7 +8,13 @@
  * le composant. Cf. mémoire « zustand-selecteurs-stables ».
  */
 import { create } from 'zustand';
-import type { AppData, LocalListing, LocalSearch, UserStatus } from './types';
+import type {
+  AppData,
+  LocalListing,
+  LocalSearch,
+  LocalVerification,
+  UserStatus,
+} from './types';
 import type { SearchCriteria } from '../domain/types';
 import { relevanceScore } from '../domain/scoring';
 import { planIngestion } from '../ingestion/pipeline';
@@ -34,6 +40,16 @@ interface AppState {
   setStatus: (listingId: string, status: UserStatus) => void;
   toggleTag: (listingId: string, tag: string) => void;
   addNote: (listingId: string, body: string) => void;
+  addVerification: (
+    listingId: string,
+    payload: {
+      verified: boolean;
+      confidence?: number | null;
+      checklist?: Record<string, boolean>;
+      anomalies?: string[];
+      flaggedReason?: string | null;
+    }
+  ) => void;
   markNotificationRead: (id: string) => void;
   markAllRead: () => void;
   addSearch: (s: Omit<LocalSearch, 'id'>) => string;
@@ -50,6 +66,7 @@ function emptyData(): AppData {
     similarities: [],
     statuses: {},
     notes: {},
+    verifications: {},
   };
 }
 
@@ -107,7 +124,9 @@ export const useAppStore = create<AppState>()((set, get) => ({
   init: () => {
     if (get().ready) return;
     const persisted = loadState();
-    const data = persisted ?? demoState();
+    const base = persisted ?? demoState();
+    // Normalise les états persistés antérieurs à l'ajout des vérifications.
+    const data: AppData = { ...base, verifications: base.verifications ?? {} };
     if (!persisted) saveState(data); // sème la démo au premier lancement
     const theme = initialTheme();
     applyTheme(theme);
@@ -256,6 +275,39 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set({ data: nextData });
     saveState(nextData);
     return { added, updated, warnings: res.warnings };
+  },
+
+  addVerification: (listingId, payload) => {
+    const { data } = get();
+    const existing = data.verifications[listingId] ?? [];
+    const entry: LocalVerification = {
+      id: makeId('vrf'),
+      verified: payload.verified,
+      confidence: payload.confidence ?? null,
+      checklist: payload.checklist ?? {},
+      anomalies: payload.anomalies ?? [],
+      flaggedReason: payload.flaggedReason ?? null,
+      createdAt: new Date().toISOString(),
+    };
+    // Une vérification positive promeut le statut à « vérifiée » ; la présence
+    // d'anomalies bascule en « suspecte » (sans écraser une qualification forte).
+    const tags = data.statuses[listingId]?.tags ?? [];
+    let statuses = data.statuses;
+    if (payload.verified) {
+      statuses = { ...statuses, [listingId]: { status: 'verifiee', tags } };
+    } else if ((payload.anomalies?.length ?? 0) > 0) {
+      statuses = { ...statuses, [listingId]: { status: 'suspecte', tags } };
+    }
+    const nextData: AppData = {
+      ...data,
+      verifications: {
+        ...data.verifications,
+        [listingId]: [entry, ...existing],
+      },
+      statuses,
+    };
+    set({ data: nextData });
+    saveState(nextData);
   },
 
   setStatus: (listingId, status) => {
