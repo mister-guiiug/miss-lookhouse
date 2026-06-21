@@ -14,6 +14,7 @@ import { summarizePriceSeries } from '../../domain/priceHistory';
 import type { UserStatus } from '../../store/types';
 import { VerificationCard } from './VerificationCard';
 import { MediaGallery } from './MediaGallery';
+import { DvfReferenceCard } from './DvfReferenceCard';
 
 const QUICK_TAGS = ['à visiter', 'négociable', 'lumineux', 'travaux', 'rare'];
 
@@ -198,6 +199,14 @@ export function ListingDetailScreen() {
           )}
         </div>
       )}
+
+      <DvfReferenceCard
+        postalCode={listing.postalCode}
+        city={listing.city}
+        propertyType={listing.propertyType}
+        price={listing.price}
+        surfaceM2={listing.surfaceM2}
+      />
 
       {/* Similaires / doublons */}
       {similar.length > 0 && (
