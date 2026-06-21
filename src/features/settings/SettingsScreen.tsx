@@ -1,6 +1,14 @@
-import { Download, Mail, RotateCcw, Send, Smartphone } from 'lucide-react';
+import {
+  Download,
+  LogOut,
+  Mail,
+  RotateCcw,
+  Send,
+  Smartphone,
+} from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
-import { BACKEND } from '../../backend/config';
+import { BACKEND, IS_SUPABASE } from '../../backend/config';
+import { useAuth } from '../../auth/useAuth';
 import { REPO_URL, SPONSOR_URL } from '../../links';
 
 declare const __APP_VERSION__: string;
@@ -10,6 +18,7 @@ export function SettingsScreen() {
   const setTheme = useAppStore(s => s.setTheme);
   const data = useAppStore(s => s.data);
   const resetDemo = useAppStore(s => s.resetDemo);
+  const { user, signOut } = useAuth();
 
   const exportJson = () => {
     const blob = new Blob([JSON.stringify({ v: 1, data }, null, 2)], {
@@ -94,6 +103,22 @@ export function SettingsScreen() {
           </button>
         </div>
       </div>
+
+      {IS_SUPABASE && user && (
+        <>
+          <h2 className="section-title">Compte</h2>
+          <div className="card">
+            <div className="row spread">
+              <span className="muted" style={{ fontSize: '0.85rem' }}>
+                Connecté : {user.email}
+              </span>
+              <button className="btn" onClick={() => void signOut()}>
+                <LogOut size={16} aria-hidden /> Se déconnecter
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       <h2 className="section-title">À propos</h2>
       <div className="card">
