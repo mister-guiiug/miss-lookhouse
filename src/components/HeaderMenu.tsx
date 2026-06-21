@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MoreVertical, RefreshCw, Settings } from 'lucide-react';
+import { Activity, MoreVertical, RefreshCw, Settings } from 'lucide-react';
 
 /**
  * Met à jour le service worker (si présent) puis recharge la page. En dev (pas
@@ -68,6 +68,16 @@ export function HeaderMenu() {
             }}
           >
             <Settings size={16} aria-hidden /> Paramètres
+          </button>
+          <button
+            className="menu-item"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              navigate('/traitements');
+            }}
+          >
+            <Activity size={16} aria-hidden /> Traitements
           </button>
           <button
             className="menu-item"
