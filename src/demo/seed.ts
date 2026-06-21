@@ -225,5 +225,22 @@ export function demoState(): AppData {
         },
       ],
     },
+    verifications: {
+      'demo-l4': [
+        {
+          id: 'demo-vrf1',
+          verified: false,
+          confidence: 25,
+          checklist: {
+            'Prix cohérent vs marché': false,
+            'Contact/agence vérifié': false,
+          },
+          anomalies: ['prix suspect', 'trompeuse'],
+          flaggedReason:
+            'Prix anormalement bas et demande de coordonnées avant visite — annonce probablement trompeuse.',
+          createdAt: '2026-06-21T07:30:00.000Z',
+        },
+      ],
+    },
   };
 }
