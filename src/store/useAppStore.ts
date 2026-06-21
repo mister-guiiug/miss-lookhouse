@@ -10,6 +10,7 @@
 import { create } from 'zustand';
 import type {
   AppData,
+  IngestionRun,
   LocalListing,
   LocalSearch,
   LocalVerification,
@@ -275,11 +276,23 @@ export const useAppStore = create<AppState>()((set, get) => ({
       });
     }
 
+    // Journalise le traitement (visible dans l'écran « Traitements »).
+    const run: IngestionRun = {
+      id: makeId('run'),
+      at: now,
+      trigger: 'manual',
+      searchId: searchId ?? null,
+      searchName: search?.name ?? null,
+      status: res.warnings.length > 0 ? 'partial' : 'success',
+      stats: { added, updated, warnings: res.warnings.length },
+      events: res.warnings.map(m => ({ level: 'warn' as const, message: m })),
+    };
     const nextData: AppData = {
       ...data,
       listings,
       notifications,
       similarities,
+      runs: [run, ...(data.runs ?? [])].slice(0, 50),
     };
     set({ data: nextData });
     saveState(nextData);

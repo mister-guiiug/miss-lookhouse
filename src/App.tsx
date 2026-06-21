@@ -14,6 +14,7 @@ import { SimilarScreen } from './features/similar/SimilarScreen';
 import { NotificationsScreen } from './features/notifications/NotificationsScreen';
 import { SettingsScreen } from './features/settings/SettingsScreen';
 import { ImportScreen } from './features/import/ImportScreen';
+import { ProcessingScreen } from './features/processing/ProcessingScreen';
 
 const MapScreen = lazy(() =>
   import('./features/map/MapScreen').then(m => ({ default: m.MapScreen }))
@@ -49,6 +50,7 @@ function RoutedApp() {
                 </Suspense>
               }
             />
+            <Route path="/traitements" element={<ProcessingScreen />} />
             <Route path="/notifications" element={<NotificationsScreen />} />
             <Route path="/reglages" element={<SettingsScreen />} />
             <Route path="*" element={<Navigate to="/" replace />} />

@@ -105,6 +105,24 @@ export interface LocalVerification {
   createdAt: string;
 }
 
+/** Un événement journalisé d'un traitement (import / collecte). */
+export interface IngestionEvent {
+  level: 'info' | 'warn' | 'error';
+  message: string;
+}
+
+/** Un traitement historisé : import manuel, capture, ou run serveur planifié. */
+export interface IngestionRun {
+  id: string;
+  at: string;
+  trigger: 'manual' | 'capture' | 'schedule';
+  searchId?: string | null;
+  searchName?: string | null;
+  status: 'success' | 'partial' | 'error';
+  stats: { added: number; updated: number; warnings: number };
+  events: IngestionEvent[];
+}
+
 export interface AppData {
   searches: LocalSearch[];
   listings: LocalListing[];
@@ -113,4 +131,6 @@ export interface AppData {
   statuses: Record<string, ListingStatusEntry>;
   notes: Record<string, ListingNote[]>;
   verifications: Record<string, LocalVerification[]>;
+  /** Historique des traitements. Optionnel (tolère les états persistés anciens). */
+  runs?: IngestionRun[];
 }
