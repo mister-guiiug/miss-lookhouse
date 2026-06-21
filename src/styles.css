@@ -336,3 +336,67 @@ label {
   color: var(--primary-strong);
   border-top: 1px solid var(--border);
 }
+
+/* ── Galerie photos + lightbox ── */
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+.gallery-thumb {
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  aspect-ratio: 4 / 3;
+  background: var(--surface-2);
+}
+.gallery-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.lightbox-img {
+  max-width: 95vw;
+  max-height: 88vh;
+  width: auto;
+  border-radius: 8px;
+  object-fit: contain;
+}
+.lightbox-close,
+.lightbox-nav {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.lightbox-close {
+  top: calc(1rem + env(safe-area-inset-top));
+  right: 1rem;
+}
+.lightbox-nav.left {
+  left: 0.5rem;
+}
+.lightbox-nav.right {
+  right: 0.5rem;
+}
