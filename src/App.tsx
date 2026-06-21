@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { useAppStore } from './store/useAppStore';
 import { AuthProvider } from './auth/useAuth';
@@ -14,6 +14,10 @@ import { SimilarScreen } from './features/similar/SimilarScreen';
 import { NotificationsScreen } from './features/notifications/NotificationsScreen';
 import { SettingsScreen } from './features/settings/SettingsScreen';
 import { ImportScreen } from './features/import/ImportScreen';
+
+const MapScreen = lazy(() =>
+  import('./features/map/MapScreen').then(m => ({ default: m.MapScreen }))
+);
 
 function RoutedApp() {
   return (
@@ -33,6 +37,18 @@ function RoutedApp() {
             <Route path="/annonces/:id" element={<ListingDetailScreen />} />
             <Route path="/similaires" element={<SimilarScreen />} />
             <Route path="/import" element={<ImportScreen />} />
+            <Route
+              path="/carte"
+              element={
+                <Suspense
+                  fallback={
+                    <div className="empty">Chargement de la carte…</div>
+                  }
+                >
+                  <MapScreen />
+                </Suspense>
+              }
+            />
             <Route path="/notifications" element={<NotificationsScreen />} />
             <Route path="/reglages" element={<SettingsScreen />} />
             <Route path="*" element={<Navigate to="/" replace />} />

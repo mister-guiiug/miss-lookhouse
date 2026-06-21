@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { Info, Upload } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Bookmark, Info, Upload } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
+import { BOOKMARKLET_HREF, BOOKMARKLET_SRC } from '../../ingestion/bookmarklet';
 
 const EXAMPLE = JSON.stringify(
   [
@@ -36,6 +37,12 @@ export function ImportScreen() {
     updated: number;
     warnings: string[];
   } | null>(null);
+
+  // href du bookmarklet posé via ref (contourne le filtrage des URL javascript:).
+  const bmRef = useRef<HTMLAnchorElement | null>(null);
+  useEffect(() => {
+    if (bmRef.current) bmRef.current.setAttribute('href', BOOKMARKLET_HREF);
+  }, []);
 
   const run = async () => {
     setBusy(true);
@@ -136,6 +143,54 @@ export function ImportScreen() {
             )}
           </div>
         )}
+      </div>
+
+      <h2 className="section-title">Capture navigateur (avancé)</h2>
+      <div className="card">
+        <div
+          className="row"
+          style={{ alignItems: 'flex-start', gap: '0.5rem' }}
+        >
+          <Bookmark size={18} color="var(--primary)" aria-hidden />
+          <p className="muted" style={{ margin: 0, fontSize: '0.84rem' }}>
+            Glissez ce bouton dans votre <strong>barre de favoris</strong>, puis
+            cliquez‑le sur une page d’annonce que vous consultez : il copie
+            l’annonce (titre, prix, photo…) à coller ci‑dessus. Collecte{' '}
+            <strong>100 % initiée par vous</strong>, rien n’est aspiré.
+          </p>
+        </div>
+        <div className="row" style={{ marginTop: '0.6rem' }}>
+          <a ref={bmRef} className="btn btn-primary" draggable>
+            📌 Capturer dans Miss LookHouse
+          </a>
+          <button
+            className="btn"
+            type="button"
+            onClick={() =>
+              void navigator.clipboard?.writeText(BOOKMARKLET_HREF)
+            }
+          >
+            Copier le code du favori
+          </button>
+        </div>
+        <details style={{ marginTop: '0.6rem' }}>
+          <summary
+            className="muted"
+            style={{ fontSize: '0.8rem', cursor: 'pointer' }}
+          >
+            Voir le code du bookmarklet
+          </summary>
+          <textarea
+            readOnly
+            rows={5}
+            value={BOOKMARKLET_SRC}
+            style={{
+              fontFamily: 'monospace',
+              fontSize: '0.7rem',
+              marginTop: '0.4rem',
+            }}
+          />
+        </details>
       </div>
     </>
   );

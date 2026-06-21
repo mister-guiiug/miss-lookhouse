@@ -337,6 +337,33 @@ label {
   border-top: 1px solid var(--border);
 }
 
+/* ── Carte (Leaflet) ── */
+.map-container {
+  position: relative;
+  z-index: 0; /* contient les z-index internes de Leaflet sous la bottom-nav */
+  height: 65vh;
+  min-height: 340px;
+  width: 100%;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.map-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+/* Popups Leaflet lisibles en thème sombre */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--surface);
+  color: var(--text);
+}
+.leaflet-popup-content a {
+  color: var(--primary);
+}
+
 /* ── Galerie photos + lightbox ── */
 .gallery {
   display: grid;
