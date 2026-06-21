@@ -23,6 +23,8 @@ import { manualImportConnector } from '../ingestion/connectors/manualImport';
 import { demoState } from '../demo/seed';
 import { clearState, loadState, saveState } from './persistence';
 import { makeId } from './ids';
+import { emitSync } from '../backend/syncBus';
+import { IS_SUPABASE } from '../backend/config';
 
 type Theme = 'light' | 'dark';
 
@@ -31,6 +33,8 @@ interface AppState {
   theme: Theme;
   data: AppData;
   init: () => void;
+  hydrate: (data: AppData) => void;
+  wipeLocal: () => void;
   setTheme: (t: Theme) => void;
   toggleTheme: () => void;
   importPayload: (
@@ -127,10 +131,12 @@ export const useAppStore = create<AppState>()((set, get) => ({
   init: () => {
     if (get().ready) return;
     const persisted = loadState();
-    const base = persisted ?? demoState();
+    // En mode Supabase, on démarre vide (données du serveur via SupabaseSync) ;
+    // en local, on sème la démo au premier lancement.
+    const base = persisted ?? (IS_SUPABASE ? emptyData() : demoState());
     // Normalise les états persistés antérieurs à l'ajout des vérifications.
     const data: AppData = { ...base, verifications: base.verifications ?? {} };
-    if (!persisted) saveState(data); // sème la démo au premier lancement
+    if (!persisted) saveState(data);
     const theme = initialTheme();
     applyTheme(theme);
     set({ ready: true, data, theme });
@@ -311,6 +317,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     };
     set({ data: nextData });
     saveState(nextData);
+    emitSync({ kind: 'addVerification', listingId, verification: entry });
   },
 
   setStatus: (listingId, status) => {
@@ -325,6 +332,11 @@ export const useAppStore = create<AppState>()((set, get) => ({
     };
     set({ data: nextData });
     saveState(nextData);
+    emitSync({
+      kind: 'upsertStatus',
+      listingId,
+      entry: { status, tags: prev?.tags ?? [] },
+    });
   },
 
   toggleTag: (listingId, tag) => {
@@ -342,6 +354,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     };
     set({ data: nextData });
     saveState(nextData);
+    emitSync({ kind: 'upsertStatus', listingId, entry: { ...prev, tags } });
   },
 
   addNote: (listingId, body) => {
@@ -349,22 +362,18 @@ export const useAppStore = create<AppState>()((set, get) => ({
     if (!trimmed) return;
     const { data } = get();
     const existing = data.notes[listingId] ?? [];
+    const note = {
+      id: makeId('note'),
+      body: trimmed,
+      createdAt: new Date().toISOString(),
+    };
     const nextData: AppData = {
       ...data,
-      notes: {
-        ...data.notes,
-        [listingId]: [
-          {
-            id: makeId('note'),
-            body: trimmed,
-            createdAt: new Date().toISOString(),
-          },
-          ...existing,
-        ],
-      },
+      notes: { ...data.notes, [listingId]: [note, ...existing] },
     };
     set({ data: nextData });
     saveState(nextData);
+    emitSync({ kind: 'addNote', listingId, note });
   },
 
   markNotificationRead: id => {
@@ -376,6 +385,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const nextData: AppData = { ...data, notifications };
     set({ data: nextData });
     saveState(nextData);
+    emitSync({ kind: 'setNotificationRead', id, readAt: now });
   },
 
   markNotificationUnread: id => {
@@ -386,6 +396,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const nextData: AppData = { ...data, notifications };
     set({ data: nextData });
     saveState(nextData);
+    emitSync({ kind: 'setNotificationRead', id, readAt: null });
   },
 
   markAllRead: () => {
@@ -398,38 +409,52 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const nextData: AppData = { ...data, notifications };
     set({ data: nextData });
     saveState(nextData);
+    for (const n of data.notifications) {
+      if (!n.readAt)
+        emitSync({ kind: 'setNotificationRead', id: n.id, readAt: now });
+    }
   },
 
   addSearch: s => {
     const { data } = get();
     const id = makeId('srch');
+    const search = { ...s, id };
     const nextData: AppData = {
       ...data,
-      searches: [...data.searches, { ...s, id }],
+      searches: [...data.searches, search],
     };
     set({ data: nextData });
     saveState(nextData);
+    emitSync({ kind: 'upsertSearch', search });
     return id;
   },
 
   updateSearch: (id, patch) => {
     const { data } = get();
-    const searches = data.searches.map(s =>
-      s.id === id ? { ...s, ...patch } : s
-    );
+    let updated: LocalSearch | undefined;
+    const searches = data.searches.map(s => {
+      if (s.id !== id) return s;
+      updated = { ...s, ...patch };
+      return updated;
+    });
     const nextData: AppData = { ...data, searches };
     set({ data: nextData });
     saveState(nextData);
+    if (updated) emitSync({ kind: 'upsertSearch', search: updated });
   },
 
   setSearchActive: (id, active) => {
     const { data } = get();
-    const searches = data.searches.map(s =>
-      s.id === id ? { ...s, active } : s
-    );
+    let updated: LocalSearch | undefined;
+    const searches = data.searches.map(s => {
+      if (s.id !== id) return s;
+      updated = { ...s, active };
+      return updated;
+    });
     const nextData: AppData = { ...data, searches };
     set({ data: nextData });
     saveState(nextData);
+    if (updated) emitSync({ kind: 'upsertSearch', search: updated });
   },
 
   deleteSearch: id => {
@@ -440,6 +465,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     };
     set({ data: nextData });
     saveState(nextData);
+    emitSync({ kind: 'deleteSearch', id });
   },
 
   runSearchNow: id => {
@@ -451,6 +477,17 @@ export const useAppStore = create<AppState>()((set, get) => ({
     const nextData: AppData = { ...data, searches };
     set({ data: nextData });
     saveState(nextData);
+  },
+
+  hydrate: data => {
+    set({ data });
+    saveState(data);
+  },
+
+  // Purge le miroir local (déconnexion / appareil partagé — RGPD).
+  wipeLocal: () => {
+    clearState();
+    set({ data: emptyData() });
   },
 
   resetDemo: () => {

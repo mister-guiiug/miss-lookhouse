@@ -319,3 +319,20 @@ label {
   user-select: none;
   touch-action: manipulation;
 }
+
+/* bandeau de synchronisation Supabase */
+.sync-banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  z-index: 25;
+  margin: 0 auto;
+  max-width: 720px;
+  text-align: center;
+  font-size: 0.78rem;
+  padding: 0.4rem;
+  background: color-mix(in srgb, var(--primary) 14%, var(--surface));
+  color: var(--primary-strong);
+  border-top: 1px solid var(--border);
+}
