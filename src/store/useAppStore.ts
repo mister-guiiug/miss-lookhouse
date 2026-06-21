@@ -54,6 +54,8 @@ interface AppState {
   markNotificationUnread: (id: string) => void;
   markAllRead: () => void;
   addSearch: (s: Omit<LocalSearch, 'id'>) => string;
+  updateSearch: (id: string, patch: Partial<Omit<LocalSearch, 'id'>>) => void;
+  setSearchActive: (id: string, active: boolean) => void;
   deleteSearch: (id: string) => void;
   runSearchNow: (id: string) => void;
   resetDemo: () => void;
@@ -408,6 +410,26 @@ export const useAppStore = create<AppState>()((set, get) => ({
     set({ data: nextData });
     saveState(nextData);
     return id;
+  },
+
+  updateSearch: (id, patch) => {
+    const { data } = get();
+    const searches = data.searches.map(s =>
+      s.id === id ? { ...s, ...patch } : s
+    );
+    const nextData: AppData = { ...data, searches };
+    set({ data: nextData });
+    saveState(nextData);
+  },
+
+  setSearchActive: (id, active) => {
+    const { data } = get();
+    const searches = data.searches.map(s =>
+      s.id === id ? { ...s, active } : s
+    );
+    const nextData: AppData = { ...data, searches };
+    set({ data: nextData });
+    saveState(nextData);
   },
 
   deleteSearch: id => {
