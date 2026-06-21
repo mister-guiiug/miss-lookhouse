@@ -35,6 +35,10 @@ export function App() {
           <Route path="/" element={<DashboardScreen />} />
           <Route path="/recherches" element={<SearchesScreen />} />
           <Route path="/recherches/nouvelle" element={<SearchEditScreen />} />
+          <Route
+            path="/recherches/:id/modifier"
+            element={<SearchEditScreen />}
+          />
           <Route path="/annonces" element={<ListingsScreen />} />
           <Route path="/annonces/:id" element={<ListingDetailScreen />} />
           <Route path="/similaires" element={<SimilarScreen />} />
