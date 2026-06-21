@@ -18,6 +18,11 @@ const searchRow: SearchRow = {
   center_lat: 45.75,
   center_lng: 4.85,
   radius_km: 5,
+  polygon: [
+    [4.85, 45.75],
+    [4.86, 45.76],
+    [4.84, 45.76],
+  ],
   price_min: 150000,
   price_max: 280000,
   surface_min: 55,
@@ -49,6 +54,11 @@ describe('search mapper', () => {
     });
     expect(back.name).toBe('T3 Lyon');
     expect(back.radiusKm).toBe(5);
+    expect(back.polygon).toEqual([
+      [4.85, 45.75],
+      [4.86, 45.76],
+      [4.84, 45.76],
+    ]);
     expect(back.keywordsExcluded).toEqual(['rez-de-chaussée']);
   });
 

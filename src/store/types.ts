@@ -51,6 +51,8 @@ export interface LocalSearch {
   centerLat?: number | null;
   centerLng?: number | null;
   radiusKm?: number | null;
+  /** Zone personnalisée : anneau GeoJSON de paires [lng, lat]. */
+  polygon?: Array<[number, number]> | null;
   priceMin?: number | null;
   priceMax?: number | null;
   surfaceMin?: number | null;
