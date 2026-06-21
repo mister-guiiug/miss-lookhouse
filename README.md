@@ -17,21 +17,39 @@ Zustand + Zod, config partagée `@mister-guiiug/dev-wpa-config`).
 
 ---
 
+## 📡 Statut
+
+- **Front local-first** : démo 100 % navigateur, **sans backend**.
+- **Backend Supabase** : **provisionné, validé en live** (isolation RLS par
+  compte _prouvée_ : login → écriture → lecture isolée, anon ne voit rien) et le
+  **site déployé tourne en mode Supabase** (authentification requise).
+- **Tout le MVP est livré** ; il reste surtout du durcissement (push/e-mail,
+  connecteurs API autorisés, cœur partagé front↔Edge). Voir _Backlog_.
+
 ## ✨ Ce qui est déjà là
 
 - **Cœur métier pur & testé** (`src/domain`) : similarité explicable (texte,
   prix, surface, pièces, géo, **hash perceptuel d'images**, contact), scoring de
   pertinence/fraîcheur, détection de **baisse de prix** et de **republication**,
   historisation (deltas + série de prix), **clustering** de doublons.
-- **Pipeline d'ingestion pur & testé** (`src/ingestion`) : connecteurs
-  (import manuel, URL de recherche, stub API autorisée), validation Zod, plan
-  d'actions idempotent (insert/update/version/similarité/notifications).
-- **PWA fonctionnelle en mode local** : la démo tourne **sans backend**
-  (données dans le navigateur). Import réel → dédup → scoring → notifications,
-  exécutés par le moteur dans le navigateur.
-- **Schéma Supabase complet + RLS deny-by-default + audit + planification**
-  (`supabase/migrations`), Edge Functions (`ingest-run`, `notify`).
-- **~45 tests** unitaires sur le cœur métier et l'ingestion.
+- **Pipeline d'ingestion pur & testé** (`src/ingestion`) : connecteurs (import
+  manuel, URL de recherche, **capture navigateur** via bookmarklet, stub API
+  autorisée), validation Zod, plan d'actions idempotent.
+- **PWA fonctionnelle en mode local** : import réel → dédup → scoring →
+  notifications, exécutés par le moteur dans le navigateur.
+- **Écrans complets** : tableau de bord, recherches (création / **édition** /
+  activation), annonces + **détail** + **galerie photos** (lightbox), **doublons**,
+  **carte** interactive (Leaflet/OSM), notifications (**appui long** = repasser en
+  non-lu), **vérification métier** (checklist / confiance / anomalies), **journal
+  des traitements**, import, réglages + menu d'en-tête (version / forcer la MAJ).
+- **Backend Supabase opérationnel** : schéma normalisé + **RLS deny-by-default** +
+  audit + planification (`supabase/migrations` `0001→0005`), Edge Functions
+  `ingest-run` (cron horaire) et `notify` (dispatch-once).
+- **Auth Supabase in-app** (login / inscription, `AuthGate`) + **adaptateur de
+  dépôt offline-first** : file de synchro **persistante** (rejeu / dead-letter),
+  pull → hydrate / push, bascule `local` ↔ `supabase` par variable d'env.
+- **Géocodage** Base Adresse Nationale (officiel, gratuit, sans clé).
+- **72 tests** unitaires (cœur métier, ingestion, mappers, géocodeur, file de synchro).
 
 ## 🚧 Ce qui reste à durcir (honnêteté)
 
@@ -39,9 +57,11 @@ Zustand + Zod, config partagée `@mister-guiiug/dev-wpa-config`).
   l'existence d'une API/flux autorisé — voir hypothèses ci-dessous).
 - **Web Push** (signature VAPID + chiffrement) et **e-mail** dans `notify` :
   stubs ; le **webhook** (Telegram/Slack) est fonctionnel.
-- Partage du cœur métier `src/domain` + `src/ingestion` en **package commun**
-  importé par les Edge Functions (Deno) pour rejouer la même logique côté serveur.
-- Auth Supabase in-app (écran login/MFA) : à câbler (le client est prêt).
+- Cœur métier `src/domain` + `src/ingestion` partagé avec les Edge Functions
+  (Deno) en **package commun**, pour rejouer la même logique côté serveur.
+- **Ouverture publique** : configurer un **SMTP custom** (l'e-mail Supabase par
+  défaut est plafonné, ~quelques envois/h) et arrêter la **politique d'inscription**
+  (ouverte vs comptes créés à la main).
 
 ## ⚠️ Hypothèses & incertitudes (rien d'inventé)
 
@@ -103,48 +123,64 @@ dédupliquer/scorer/notifier en direct.
 
 ## 🔐 Mode Supabase
 
-Voir **[`supabase/README.md`](supabase/README.md)** (migrations, RLS,
-planification, Edge Functions, secrets). Côté front, copier `.env.example` →
-`.env.local` et renseigner `VITE_BACKEND=supabase` + URL + clé anon **publiques**.
+Le backend est **provisionné, validé en live** (isolation RLS par compte prouvée)
+et le **site déployé tourne en mode Supabase** (authentification requise). Détails
+techniques (migrations, RLS, planification, Edge Functions, secrets) :
+**[`supabase/README.md`](supabase/README.md)**.
+
+- **Dev local branché Supabase** : copier `.env.example` → `.env.local` et
+  renseigner `VITE_BACKEND=supabase` + URL + **clé anon publiques**.
+- **Build de production** : lit `.env.production` (versionné, **valeurs publiques
+  uniquement** ; la RLS arbitre tous les accès).
+
+> Les secrets (`service_role`, mot de passe DB, `INGEST_TOKEN`, clé VAPID privée)
+> ne vivent **jamais** dans le dépôt — uniquement dans les secrets Supabase /
+> Edge Functions.
 
 ## 🌐 Déploiement (GitHub Pages)
 
 CI/CD délégués aux workflows réutilisables famille (`pwa-ci.yml@v1`,
 `pwa-deploy.yml@v1`). `base` = `/miss-lookhouse/`, HashRouter. Le site atterrit sur
-`https://mister-guiiug.github.io/miss-lookhouse/`. Lancer `npx prettier --write .`
-avant tout commit (la CI vérifie `prettier --check`).
+`https://mister-guiiug.github.io/miss-lookhouse/` (**mode Supabase** — écran de
+connexion). Lancer `npx prettier --write .` avant tout commit (la CI vérifie
+`prettier --check`).
 
 ---
 
 ## 🗺️ Backlog
 
-### MVP (cœur livré dans ce squelette)
+### MVP — livré ✅
 
-- [x] Cœur similarité/scoring/historisation testé
+- [x] Cœur similarité / scoring / historisation testé
 - [x] Pipeline d'ingestion (plan idempotent) testé
-- [x] Création de recherches + import manuel + stockage local
+- [x] Recherches : création, **édition**, activation/désactivation, import manuel
 - [x] Historique de prix + détection baisse/recyclage
 - [x] Vue liste + détail + doublons + notifications + réglages
 - [x] Tags / qualification manuelle
 - [x] Schéma Supabase + RLS + planification + Edge Functions
-- [ ] Auth Supabase in-app (login/inscription) + bascule local↔supabase
-- [ ] Adaptateur dépôt Supabase (lecture/écriture branchée sur le store)
+- [x] **Auth Supabase in-app** (login/inscription) + bascule local ↔ supabase
+- [x] **Adaptateur dépôt Supabase** branché sur le store (offline-first, file persistante)
+- [x] **Backend provisionné, validé live (RLS isolée) et déployé** (Pages en mode Supabase)
 
 ### V2
 
+- [x] Capture navigateur (bookmarklet) initiée par l'utilisateur
+- [x] Vérification métier (checklist, niveau de confiance, anomalies)
+- [x] Enrichissement géocodage (BAN)
+- [x] Journal des traitements (runs / événements d'ingestion)
 - [ ] Connecteurs `authorized_api` réels (par source autorisée)
 - [ ] Web Push (VAPID) + e-mail (résumé quotidien/hebdo)
-- [ ] Capture navigateur (extension/bookmarklet) initiée par l'utilisateur
 - [ ] Cœur métier partagé front ↔ Edge Functions (package commun)
-- [ ] Vérification métier (checklist, niveau de confiance, anomalies)
-- [ ] Enrichissement géocodage (BAN) + prix de référence (DVF, à confirmer)
+- [ ] Prix de référence (DVF, à confirmer)
 
 ### V3
 
+- [x] Carte interactive (marqueurs + zones)
+- [ ] Dessin de **polygone** de zone sur la carte
 - [ ] Similarité par **embeddings** (pgvector) en option (après l'heuristique)
-- [ ] Carte interactive + dessin de polygone de zone
 - [ ] Multi-zones, partage de recherches, rôles d'équipe
 - [ ] Observabilité (métriques pipeline, dashboards), alerting
+- [ ] **SMTP custom** + politique d'inscription (ouverture publique)
 
 ## 🧪 Tests
 
@@ -153,22 +189,24 @@ npm test
 ```
 
 Couvrent : normalisation FR, similarité textuelle/géo/image, scoring, deltas de
-prix, clustering, et le **plan d'ingestion** (nouveau vs maj, baisse de prix,
-recyclage, exclusion hors zone).
+prix, clustering, **plan d'ingestion** (nouveau vs maj, baisse de prix, recyclage,
+exclusion hors zone), **mappers** Supabase, **géocodeur** BAN et **file de synchro**.
 
 ## 📁 Structure
 
 ```
 src/
   domain/      cœur PUR (similarité, scoring, géo, images, historisation) + tests
-  ingestion/   connecteurs + schema (zod) + pipeline + tests
+  ingestion/   connecteurs + schema (zod) + pipeline + bookmarklet + tests
   store/       Zustand (mode local) + persistance + démo
-  backend/     sélection backend + client Supabase
-  components/  layout, nav, UI (badges, sparkline)
-  features/    écrans (dashboard, searches, listings, similar, notifications, settings, import)
-  lib/         formatage
+  backend/     sélection backend, client, mappers, dépôt, file de synchro
+  auth/        AuthProvider + AuthGate
+  components/  layout, nav, menu d'en-tête, UI (badges, sparkline)
+  features/    écrans (dashboard, searches, listings, similar, map,
+               notifications, processing, settings, import)
+  lib/         formatage, géocodeur (BAN), appui long
 supabase/
-  migrations/  0001_schema · 0002_rls · 0003_seed · 0004_scheduling
+  migrations/  0001_schema · 0002_rls · 0003_seed · 0004_scheduling · 0005_notifications_dispatch
   functions/   ingest-run · notify · _shared
 ```
 
