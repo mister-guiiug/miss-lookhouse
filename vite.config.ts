@@ -61,6 +61,8 @@ export default defineConfig(({ command }) => {
               norm.includes('/@tailwindcss/')
             )
               return 'tailwind';
+            // Leaflet : hors chunks forcés → code-splitté avec la carte (lazy).
+            if (norm.includes('/leaflet/')) return;
             return 'vendor';
           },
         },

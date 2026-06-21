@@ -1,5 +1,12 @@
 import { Link } from 'react-router-dom';
-import { Bell, CopyCheck, List, Search, Upload } from 'lucide-react';
+import {
+  Bell,
+  CopyCheck,
+  List,
+  Map as MapIcon,
+  Search,
+  Upload,
+} from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { formatPrice, timeAgo } from '../../lib/format';
 import { ScoreBadge, SourceBadge } from '../../components/ui';
@@ -61,6 +68,10 @@ export function DashboardScreen() {
         style={{ justifyContent: 'center' }}
       >
         <Upload size={16} aria-hidden /> Importer des annonces
+      </Link>
+
+      <Link to="/carte" className="btn" style={{ justifyContent: 'center' }}>
+        <MapIcon size={16} aria-hidden /> Voir la carte
       </Link>
 
       <h2 className="section-title">Récemment vues / modifiées</h2>
