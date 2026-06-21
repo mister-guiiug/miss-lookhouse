@@ -8,6 +8,9 @@ dist/
 .env.*
 !.env.example
 !.env.production.example
+# Exception : build Pages branché sur Supabase — valeurs PUBLIQUES uniquement
+# (clé anon + URL ; arbitrées par la RLS). Voir .env.production.example.
+!.env.production
 
 # Supabase (CLI)
 supabase/.temp/
