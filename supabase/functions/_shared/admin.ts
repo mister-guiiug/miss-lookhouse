@@ -5,6 +5,7 @@ import {
   createClient,
   type SupabaseClient,
 } from 'https://esm.sh/@supabase/supabase-js@2';
+import { timingSafeEqual } from './net.ts';
 
 export function adminClient(): SupabaseClient {
   const url = Deno.env.get('SUPABASE_URL');
@@ -25,5 +26,5 @@ export function checkCronToken(req: Request): boolean {
     /^Bearer\s+/i,
     ''
   );
-  return got === expected;
+  return timingSafeEqual(got, expected);
 }

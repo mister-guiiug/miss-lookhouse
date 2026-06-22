@@ -31,65 +31,99 @@ import {
   type VerificationRow,
 } from './mappers';
 
-/** Lit l'intégralité des données de l'utilisateur courant (arbitré par la RLS). */
+const PAGE = 1000;
+
+/**
+ * Pagine une requête PostgREST jusqu'à épuisement. PostgREST plafonne une
+ * réponse à ~1000 lignes : sans pagination, l'hydratation perdrait des données
+ * SILENCIEUSEMENT au-delà. On boucle par `.range()` jusqu'à une page incomplète.
+ */
+async function fetchAllRows<T>(
+  page: (
+    from: number,
+    to: number
+  ) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
+): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await page(from, from + PAGE - 1);
+    if (error) throw new Error(error.message);
+    const rows = data ?? [];
+    out.push(...rows);
+    if (rows.length < PAGE) break;
+  }
+  return out;
+}
+
+/** Lit l'intégralité des données de l'utilisateur courant (RLS + paginé). */
 export async function pullAll(supabase: SupabaseClient): Promise<AppData> {
   const [
     searches,
     listings,
-    prices,
+    priceRows,
     notifications,
     similarities,
-    statuses,
-    notes,
-    verifications,
+    statusRows,
+    noteRows,
+    verifRows,
   ] = await Promise.all([
-    supabase.from('saved_searches').select('*'),
-    supabase.from('listings').select('*'),
-    supabase
-      .from('listing_price_history')
-      .select('listing_id, observed_at, price'),
-    supabase
-      .from('notifications')
-      .select('*')
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('listing_similarity')
-      .select('id, listing_a, listing_b, score, bucket'),
-    supabase.from('listing_status').select('listing_id, status, tags'),
-    supabase
-      .from('listing_notes')
-      .select('*')
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('listing_verifications')
-      .select(
-        'id, listing_id, verified, confidence, checklist, anomalies, flagged_reason, created_at'
-      )
-      .order('created_at', { ascending: false }),
+    fetchAllRows<SearchRow>((f, t) =>
+      supabase.from('saved_searches').select('*').range(f, t)
+    ),
+    fetchAllRows<ListingRow>((f, t) =>
+      supabase.from('listings').select('*').range(f, t)
+    ),
+    fetchAllRows<PriceRow>((f, t) =>
+      supabase
+        .from('listing_price_history')
+        .select('listing_id, observed_at, price')
+        .range(f, t)
+    ),
+    fetchAllRows<NotificationRow>((f, t) =>
+      supabase
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(f, t)
+    ),
+    fetchAllRows<SimilarityRow>((f, t) =>
+      supabase
+        .from('listing_similarity')
+        .select('id, listing_a, listing_b, score, bucket')
+        .range(f, t)
+    ),
+    fetchAllRows<StatusRow>((f, t) =>
+      supabase
+        .from('listing_status')
+        .select('listing_id, status, tags')
+        .range(f, t)
+    ),
+    fetchAllRows<NoteRow>((f, t) =>
+      supabase
+        .from('listing_notes')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(f, t)
+    ),
+    fetchAllRows<VerificationRow>((f, t) =>
+      supabase
+        .from('listing_verifications')
+        .select(
+          'id, listing_id, verified, confidence, checklist, anomalies, flagged_reason, created_at'
+        )
+        .order('created_at', { ascending: false })
+        .range(f, t)
+    ),
   ]);
 
-  const failed = [
-    searches,
-    listings,
-    prices,
-    notifications,
-    similarities,
-    statuses,
-    notes,
-    verifications,
-  ].find(r => r.error);
-  if (failed?.error) throw new Error(failed.error.message);
-
-  const priceRows = (prices.data ?? []) as PriceRow[];
-
   const statusMap: Record<string, ListingStatusEntry> = {};
-  for (const row of (statuses.data ?? []) as StatusRow[]) {
+  for (const row of statusRows) {
     const m = statusFromRow(row);
     statusMap[m.listingId] = m.entry;
   }
 
   const noteMap: Record<string, ListingNote[]> = {};
-  for (const row of (notes.data ?? []) as NoteRow[]) {
+  for (const row of noteRows) {
     const m = noteFromRow(row);
     const list = noteMap[m.listingId] ?? [];
     list.push(m.note);
@@ -97,7 +131,7 @@ export async function pullAll(supabase: SupabaseClient): Promise<AppData> {
   }
 
   const verifMap: Record<string, LocalVerification[]> = {};
-  for (const row of (verifications.data ?? []) as VerificationRow[]) {
+  for (const row of verifRows) {
     const m = verificationFromRow(row);
     const list = verifMap[m.listingId] ?? [];
     list.push(m.verification);
@@ -105,16 +139,10 @@ export async function pullAll(supabase: SupabaseClient): Promise<AppData> {
   }
 
   return {
-    searches: ((searches.data ?? []) as SearchRow[]).map(searchFromRow),
-    listings: ((listings.data ?? []) as ListingRow[]).map(r =>
-      listingFromRow(r, priceRows)
-    ),
-    notifications: ((notifications.data ?? []) as NotificationRow[]).map(
-      notificationFromRow
-    ),
-    similarities: ((similarities.data ?? []) as SimilarityRow[]).map(
-      similarityFromRow
-    ),
+    searches: searches.map(searchFromRow),
+    listings: listings.map(r => listingFromRow(r, priceRows)),
+    notifications: notifications.map(notificationFromRow),
+    similarities: similarities.map(similarityFromRow),
     statuses: statusMap,
     notes: noteMap,
     verifications: verifMap,

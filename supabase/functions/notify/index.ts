@@ -12,6 +12,7 @@
 import webpush from 'npm:web-push@3.6.7';
 import { cors, json } from '../_shared/cors.ts';
 import { adminClient, checkCronToken } from '../_shared/admin.ts';
+import { fetchWithTimeout } from '../_shared/net.ts';
 
 interface Body {
   notificationId?: string;
@@ -102,7 +103,7 @@ Deno.serve(async (req: Request) => {
     // — Canal WEBHOOK —
     if (prefs?.webhook_url) {
       try {
-        await fetch(prefs.webhook_url, {
+        await fetchWithTimeout(prefs.webhook_url, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ text: `${n.title} — ${n.body ?? ''}` }),
@@ -131,7 +132,8 @@ Deno.serve(async (req: Request) => {
               endpoint: sub.endpoint,
               keys: { p256dh: sub.p256dh, auth: sub.auth },
             },
-            payload
+            payload,
+            { timeout: 8000 }
           );
           pushSent++;
         } catch (e) {

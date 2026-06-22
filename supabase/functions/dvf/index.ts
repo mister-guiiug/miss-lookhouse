@@ -9,6 +9,7 @@
 // ║ Source : « Demandes de valeurs foncières » (DGFiP), service public.    ║
 // ╚══════════════════════════════════════════════════════════════════════╝
 import { cors, json } from '../_shared/cors.ts';
+import { fetchWithTimeout } from '../_shared/net.ts';
 
 // Années DVF tentées, de la plus récente à la plus ancienne.
 const YEARS = [2024, 2023, 2022];
@@ -42,7 +43,7 @@ Deno.serve(async (req: Request) => {
     const url = `https://files.data.gouv.fr/geo-dvf/latest/csv/${year}/communes/${dept}/${insee}.csv`;
     let res: Response;
     try {
-      res = await fetch(url, { redirect: 'follow' });
+      res = await fetchWithTimeout(url, { redirect: 'follow' }, 12000);
     } catch {
       continue;
     }
@@ -75,7 +76,7 @@ async function resolveInsee(
   if (n >= 13001 && n <= 13016) return String(13200 + (n - 13000)); // Marseille
 
   try {
-    const res = await fetch(
+    const res = await fetchWithTimeout(
       `https://geo.api.gouv.fr/communes?codePostal=${codePostal}&fields=code,nom,population&format=json`
     );
     if (!res.ok) return null;
@@ -98,11 +99,35 @@ async function resolveInsee(
   }
 }
 
+/** Découpe une ligne CSV en respectant les guillemets (RFC 4180). */
+function splitCsvLine(line: string): string[] {
+  const out: string[] = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (line[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else inQuotes = false;
+      } else cur += ch;
+    } else if (ch === '"') inQuotes = true;
+    else if (ch === ',') {
+      out.push(cur);
+      cur = '';
+    } else cur += ch;
+  }
+  out.push(cur);
+  return out;
+}
+
 /** Médiane + quartiles €/m² robustes depuis le CSV geo-dvf. */
 function computeStats(csv: string, typeLocal: string | null) {
   const lines = csv.split('\n');
   if (lines.length < 2) return { count: 0, median: null, p25: null, p75: null };
-  const header = lines[0].split(',');
+  const header = splitCsvLine(lines[0]);
   const cols = header.length;
   const iVf = header.indexOf('valeur_fonciere');
   const iSurf = header.indexOf('surface_reelle_bati');
@@ -114,7 +139,7 @@ function computeStats(csv: string, typeLocal: string | null) {
   for (let k = 1; k < lines.length; k++) {
     const line = lines[k];
     if (!line) continue;
-    const c = line.split(',');
+    const c = splitCsvLine(line);
     if (c.length !== cols) continue; // garde anti-désalignement CSV
     if (typeLocal && c[iType] !== typeLocal) continue;
     const vf = Number(c[iVf]);

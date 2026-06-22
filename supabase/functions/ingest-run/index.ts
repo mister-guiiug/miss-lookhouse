@@ -14,6 +14,7 @@
 // ╚══════════════════════════════════════════════════════════════════════╝
 import { cors, json } from '../_shared/cors.ts';
 import { adminClient, checkCronToken } from '../_shared/admin.ts';
+import { assertPublicHttpsUrl, fetchWithTimeout } from '../_shared/net.ts';
 import { parseListings } from '../_shared/core/ingestion/schema.ts';
 import {
   planIngestion,
@@ -200,14 +201,8 @@ async function fetchConnector(connector: {
 }): Promise<{ listings: CanonicalListing[]; errors: string[] }> {
   const cfg = (connector.config ?? {}) as Record<string, unknown>;
   const url = typeof cfg.url === 'string' ? cfg.url : '';
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    throw new Error('config.url manquante ou invalide');
-  }
-  if (parsed.protocol !== 'https:')
-    throw new Error('config.url doit être https');
+  // Anti-SSRF : https + hôte PUBLIC uniquement (refuse loopback / IP privées).
+  await assertPublicHttpsUrl(url);
 
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -223,10 +218,11 @@ async function fetchConnector(connector: {
     }
   }
 
-  const res = await fetch(url, {
-    method: (cfg.method as string) ?? 'GET',
-    headers,
-  });
+  const res = await fetchWithTimeout(
+    url,
+    { method: (cfg.method as string) ?? 'GET', headers },
+    10000
+  );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const payload = await res.json();
 
@@ -294,7 +290,12 @@ function toCriteria(s: Record<string, unknown>): SearchCriteria {
   };
 }
 
-/** Applique le plan d'ingestion en base. Renvoie les compteurs. */
+/**
+ * Applique le plan en base, par LOTS (évite le N+1) : les ids des annonces sont
+ * générés côté serveur → un seul upsert (insert ET update batchés sur conflit
+ * d'id), puis un insert des versions, un upsert des similarités, un insert des
+ * notifications. Renvoie les compteurs.
+ */
 async function applyPlan(
   supabase: Supa,
   userId: string,
@@ -302,75 +303,94 @@ async function applyPlan(
   plan: IngestionPlan
 ) {
   const idByKey = new Map<string, string>();
+  const listingRows: Record<string, unknown>[] = [];
+  const versionRows: Record<string, unknown>[] = [];
   let added = 0;
   let updated = 0;
 
   for (const up of plan.upserts) {
+    let id: string;
     if (up.kind === 'insert') {
-      const { data, error } = await supabase
-        .from('listings')
-        .insert(listingRow(userId, searchId, up))
-        .select('id')
-        .single();
-      if (error) throw new Error(`insert listing: ${error.message}`);
-      const id = data!.id as string;
-      idByKey.set(up.key, id);
+      id = crypto.randomUUID();
       added++;
-      await insertVersion(supabase, userId, id, up);
     } else if (up.matchedId) {
-      idByKey.set(up.key, up.matchedId);
-      const { error } = await supabase
-        .from('listings')
-        .update(listingUpdate(up))
-        .eq('id', up.matchedId);
-      if (error) throw new Error(`update listing: ${error.message}`);
+      id = up.matchedId;
       updated++;
-      await insertVersion(supabase, userId, up.matchedId, up);
+    } else {
+      continue;
     }
+    idByKey.set(up.key, id);
+    listingRows.push(listingRow(userId, searchId, up, id));
+    versionRows.push(versionRow(userId, id, up));
   }
 
-  let similarities = 0;
+  if (listingRows.length > 0) {
+    const { error } = await supabase
+      .from('listings')
+      .upsert(listingRows, { onConflict: 'id' });
+    if (error) throw new Error(`upsert listings: ${error.message}`);
+  }
+  if (versionRows.length > 0) {
+    // Le trigger lh_record_price_point alimente l'historique de prix par ligne.
+    const { error } = await supabase
+      .from('listing_versions')
+      .insert(versionRows);
+    if (error) throw new Error(`insert versions: ${error.message}`);
+  }
+
+  const simRows: Record<string, unknown>[] = [];
   for (const s of plan.similarities) {
     const subjectId = idByKey.get(s.subjectKey);
     if (!subjectId || subjectId === s.withId) continue;
     // Convention : listing_a < listing_b (contrainte d'unicité de paire).
     const [a, b] =
       subjectId < s.withId ? [subjectId, s.withId] : [s.withId, subjectId];
-    const { error } = await supabase.from('listing_similarity').upsert(
-      {
-        user_id: userId,
-        listing_a: a,
-        listing_b: b,
-        score: s.score,
-        bucket: s.bucket,
-        breakdown: s.breakdown,
-      },
-      { onConflict: 'listing_a,listing_b' }
-    );
-    if (!error) similarities++;
+    simRows.push({
+      user_id: userId,
+      listing_a: a,
+      listing_b: b,
+      score: s.score,
+      bucket: s.bucket,
+      breakdown: s.breakdown,
+    });
+  }
+  let similarities = 0;
+  if (simRows.length > 0) {
+    const { error } = await supabase
+      .from('listing_similarity')
+      .upsert(simRows, { onConflict: 'listing_a,listing_b' });
+    if (!error) similarities = simRows.length;
   }
 
+  const notifRows = plan.notifications.map(n => ({
+    user_id: userId,
+    type: n.type,
+    title: n.title,
+    body: n.body,
+    listing_id: idByKey.get(n.subjectKey) ?? null,
+    search_id: searchId,
+    payload: n.payload,
+  }));
   let notifications = 0;
-  for (const n of plan.notifications) {
-    const listingId = idByKey.get(n.subjectKey) ?? null;
-    const { error } = await supabase.from('notifications').insert({
-      user_id: userId,
-      type: n.type,
-      title: n.title,
-      body: n.body,
-      listing_id: listingId,
-      search_id: searchId,
-      payload: n.payload,
-    });
-    if (!error) notifications++;
+  if (notifRows.length > 0) {
+    const { error } = await supabase.from('notifications').insert(notifRows);
+    if (!error) notifications = notifRows.length;
   }
 
   return { added, updated, similarities, notifications };
 }
 
-function listingRow(userId: string, searchId: string, up: PlannedUpsert) {
+// Pas de first_seen_at : l'INSERT prend le défaut (now()), l'UPDATE (via upsert
+// on conflict id) ne le touche pas → la date de 1re détection est préservée.
+function listingRow(
+  userId: string,
+  searchId: string,
+  up: PlannedUpsert,
+  id: string
+) {
   const c = up.canonical;
   return {
+    id,
     user_id: userId,
     source_id: c.sourceId,
     external_id: c.externalId,
@@ -379,20 +399,6 @@ function listingRow(userId: string, searchId: string, up: PlannedUpsert) {
     relevance_score: Math.round(up.relevance),
     source_status: 'active',
     currency: c.currency ?? 'EUR',
-    first_seen_at: nowIso(),
-    last_seen_at: nowIso(),
-    last_changed_at: nowIso(),
-    raw: c,
-    ...listingFields(c),
-  };
-}
-
-function listingUpdate(up: PlannedUpsert) {
-  const c = up.canonical;
-  return {
-    fingerprint: up.fingerprint,
-    relevance_score: Math.round(up.relevance),
-    source_status: 'active',
     last_seen_at: nowIso(),
     last_changed_at: nowIso(),
     raw: c,
@@ -427,15 +433,10 @@ function listingFields(c: CanonicalListing) {
   };
 }
 
-async function insertVersion(
-  supabase: Supa,
-  userId: string,
-  listingId: string,
-  up: PlannedUpsert
-) {
+/** Ligne de version (snapshot). Insertion batchée par l'appelant. */
+function versionRow(userId: string, listingId: string, up: PlannedUpsert) {
   const c = up.canonical;
-  // Le trigger `lh_record_price_point` alimente listing_price_history si le prix change.
-  await supabase.from('listing_versions').insert({
+  return {
     user_id: userId,
     listing_id: listingId,
     captured_at: nowIso(),
@@ -449,5 +450,5 @@ async function insertVersion(
     media_count: c.mediaUrls?.length ?? 0,
     content_hash: up.fingerprint,
     raw: c,
-  });
+  };
 }
