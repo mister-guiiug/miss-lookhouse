@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Trash2, Save, X, Power } from 'lucide-react';
+import { Plus, Trash2, Save, X, Power, FlaskConical } from 'lucide-react';
 import { IS_SUPABASE } from '../../backend/config';
 import { useAuth } from '../../auth/useAuth';
 import {
@@ -8,7 +8,10 @@ import {
   saveConnector,
   setConnectorEnabled,
   deleteConnector,
+  testConnector,
   type Connector,
+  type ConnectorInput,
+  type ConnectorTestResult,
 } from '../../backend/connectors';
 
 const SOURCES = ['leboncoin', 'seloger', 'bienici', 'pap', 'import_generique'];
@@ -47,12 +50,40 @@ function toForm(c: Connector): FormState {
   };
 }
 
+/** Parse le formulaire en ConnectorInput (lève si URL non https / mappage invalide). */
+function buildInput(form: FormState): ConnectorInput {
+  const u = new URL(form.url.trim());
+  if (u.protocol !== 'https:') throw new Error('L’URL doit être en https.');
+  let map: Record<string, string> | undefined;
+  const t = form.mapText.trim();
+  if (t) {
+    const parsed: unknown = JSON.parse(t);
+    if (typeof parsed !== 'object' || Array.isArray(parsed) || !parsed)
+      throw new Error('Le mappage doit être un objet JSON.');
+    map = parsed as Record<string, string>;
+  }
+  return {
+    id: form.id,
+    sourceId: form.sourceId,
+    label: form.label.trim() || form.sourceId,
+    enabled: form.enabled,
+    config: {
+      url: form.url.trim(),
+      listPath: form.listPath.trim() || undefined,
+      map,
+    },
+    secretRef: form.secretRef.trim() || null,
+  };
+}
+
 export function ConnectorsScreen() {
   const { user } = useAuth();
   const [list, setList] = useState<Connector[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
   const [busy, setBusy] = useState(false);
+  const [test, setTest] = useState<ConnectorTestResult | null>(null);
+  const [testing, setTesting] = useState(false);
 
   const reload = () => {
     setErr(null);
@@ -80,34 +111,30 @@ export function ConnectorsScreen() {
     setBusy(true);
     setErr(null);
     try {
-      const u = new URL(form.url.trim());
-      if (u.protocol !== 'https:') throw new Error('L’URL doit être en https.');
-      let map: Record<string, string> | undefined;
-      const t = form.mapText.trim();
-      if (t) {
-        const parsed: unknown = JSON.parse(t);
-        if (typeof parsed !== 'object' || Array.isArray(parsed) || !parsed)
-          throw new Error('Le mappage doit être un objet JSON.');
-        map = parsed as Record<string, string>;
-      }
-      await saveConnector({
-        id: form.id,
-        sourceId: form.sourceId,
-        label: form.label.trim() || form.sourceId,
-        enabled: form.enabled,
-        config: {
-          url: form.url.trim(),
-          listPath: form.listPath.trim() || undefined,
-          map,
-        },
-        secretRef: form.secretRef.trim() || null,
-      });
+      await saveConnector(buildInput(form));
       setForm(null);
       reload();
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Échec de l’enregistrement.');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const runTest = async () => {
+    if (!form) return;
+    setTesting(true);
+    setErr(null);
+    setTest(null);
+    try {
+      const input = buildInput(form);
+      setTest(
+        await testConnector({ ...input.config, secretRef: input.secretRef })
+      );
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Configuration invalide.');
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -264,6 +291,16 @@ export function ConnectorsScreen() {
               <X size={15} aria-hidden /> Annuler
             </button>
             <button
+              type="button"
+              className="btn"
+              onClick={() => void runTest()}
+              disabled={testing}
+              style={{ flex: 1, justifyContent: 'center' }}
+            >
+              <FlaskConical size={15} aria-hidden />{' '}
+              {testing ? 'Test…' : 'Tester'}
+            </button>
+            <button
               type="submit"
               className="btn btn-primary"
               disabled={busy}
@@ -277,6 +314,47 @@ export function ConnectorsScreen() {
                   : 'Créer le connecteur'}
             </button>
           </div>
+          {test && (
+            <div
+              className="card"
+              style={{ marginTop: '0.5rem', background: 'var(--surface-2)' }}
+            >
+              {test.error ? (
+                <span style={{ color: 'var(--danger)', fontSize: '0.84rem' }}>
+                  {test.error}
+                </span>
+              ) : (
+                <>
+                  <div className="row spread">
+                    <span className="h-title" style={{ fontSize: '0.9rem' }}>
+                      {test.count ?? 0} annonce(s) trouvée(s)
+                    </span>
+                    {test.errors && test.errors.length > 0 && (
+                      <span className="badge badge-warn">
+                        {test.errors.length} non valide(s)
+                      </span>
+                    )}
+                  </div>
+                  {(test.sample ?? []).map((smp, i) => (
+                    <div
+                      key={i}
+                      className="muted"
+                      style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}
+                    >
+                      {smp.title ?? smp.externalId}
+                      {smp.price != null ? ` — ${smp.price} €` : ''}
+                      {smp.city ? ` · ${smp.city}` : ''}
+                    </div>
+                  ))}
+                  {(test.sample ?? []).length === 0 && (
+                    <span className="muted" style={{ fontSize: '0.8rem' }}>
+                      Aucun échantillon normalisé (vérifiez le mappage).
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </form>
       )}
 
