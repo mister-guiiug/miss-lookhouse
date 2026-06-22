@@ -67,6 +67,25 @@ export interface LocalSearch {
   lastRunAt?: string | null;
 }
 
+/** Issue d'un canal de livraison (cf. notify / migration 0009). */
+export type NotificationChannelStatus =
+  | 'sent'
+  | 'partial'
+  | 'failed'
+  | 'skipped'
+  | 'no_subscription';
+
+/** Résumé de livraison d'une notification, écrit par la fonction `notify`. */
+export interface NotificationDelivery {
+  at?: string;
+  channels?: {
+    webhook?: NotificationChannelStatus;
+    push?: NotificationChannelStatus;
+  };
+  pushSent?: number;
+  pushFailed?: number;
+}
+
 export interface LocalNotification {
   id: string;
   type: LhNotificationType;
@@ -75,6 +94,10 @@ export interface LocalNotification {
   listingId?: string;
   createdAt: string;
   readAt?: string | null;
+  /** `null` tant que le dispatch n'a pas eu lieu (mode Supabase). */
+  dispatchedAt?: string | null;
+  /** Statut de livraison par canal (mode Supabase ; `null` si non dispatchée). */
+  delivery?: NotificationDelivery | null;
 }
 
 export interface LocalSimilarity {

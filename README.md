@@ -23,8 +23,14 @@ Zustand + Zod, config partagée `@mister-guiiug/dev-wpa-config`).
 - **Backend Supabase** : **provisionné, validé en live** (isolation RLS par
   compte _prouvée_ : login → écriture → lecture isolée, anon ne voit rien) et le
   **site déployé tourne en mode Supabase** (authentification requise).
-- **Tout le MVP est livré** ; il reste surtout du durcissement (push/e-mail,
-  connecteurs API autorisés, cœur partagé front↔Edge). Voir _Backlog_.
+- **MVP + durcissement livrés** : sécurité serveur (anti-SSRF, timeouts,
+  comparaison à temps constant), fiabilité (pagination du pull, écritures par
+  lots, garde anti-dérive du cœur Edge), **cœur métier partagé front↔Edge**,
+  **Web Push** (VAPID), **connecteurs `authorized_api`** (moteur générique +
+  dry-run), **prix de référence DVF**, **partage de recherches** (lecture),
+  **statut de livraison** des notifications. Reste : **éprouver le push réel**
+  (navigateur installé), **e-mail/SMTP** et la **politique d'inscription**. Voir
+  _Backlog_.
 
 ## ✨ Ce qui est déjà là
 
@@ -43,25 +49,37 @@ Zustand + Zod, config partagée `@mister-guiiug/dev-wpa-config`).
   non-lu), **vérification métier** (checklist / confiance / anomalies), **journal
   des traitements**, import, réglages + menu d'en-tête (version / forcer la MAJ).
 - **Backend Supabase opérationnel** : schéma normalisé + **RLS deny-by-default** +
-  audit + planification (`supabase/migrations` `0001→0005`), Edge Functions
-  `ingest-run` (cron horaire) et `notify` (dispatch-once).
+  audit + planification (`supabase/migrations` `0001→0009`), Edge Functions
+  `ingest-run` (cron horaire, **cœur partagé**), `notify` (dispatch-once :
+  webhook + **Web Push** VAPID + **statut de livraison**), `dvf` (prix au m²),
+  `connector-test` (dry-run) et `notify-test` (notification de test).
+- **Cœur métier partagé front↔Edge** : `supabase/functions/_shared/core` est
+  **généré** depuis `src/` (`npm run build:edge-core`) → la même normalisation et
+  le même plan d'ingestion côté serveur, avec **garde anti-dérive** en CI.
+- **Connecteurs `authorized_api`** (mode Supabase) : CRUD + **dry-run** (« Tester »)
+  qui récupère/mappe/normalise un échantillon **sans rien écrire**, derrière une
+  garde **anti-SSRF**. **Partage de recherches** en lecture (e-mail, RLS additive).
 - **Auth Supabase in-app** (login / inscription, `AuthGate`) + **adaptateur de
   dépôt offline-first** : file de synchro **persistante** (rejeu / dead-letter),
   pull → hydrate / push, bascule `local` ↔ `supabase` par variable d'env.
 - **Géocodage** Base Adresse Nationale (officiel, gratuit, sans clé).
-- **72 tests** unitaires (cœur métier, ingestion, mappers, géocodeur, file de synchro).
+- **91 tests** unitaires (cœur métier, ingestion, mappers, géocodeur, file de
+  synchro, pagination du dépôt).
 
-## 🚧 Ce qui reste à durcir (honnêteté)
+## 🚧 Ce qui reste (honnêteté)
 
-- Connecteurs `authorized_api` par source : **non implémentés** (dépendent de
-  l'existence d'une API/flux autorisé — voir hypothèses ci-dessous).
-- **Web Push** (signature VAPID + chiffrement) et **e-mail** dans `notify` :
-  stubs ; le **webhook** (Telegram/Slack) est fonctionnel.
-- Cœur métier `src/domain` + `src/ingestion` partagé avec les Edge Functions
-  (Deno) en **package commun**, pour rejouer la même logique côté serveur.
-- **Ouverture publique** : configurer un **SMTP custom** (l'e-mail Supabase par
-  défaut est plafonné, ~quelques envois/h) et arrêter la **politique d'inscription**
-  (ouverte vs comptes créés à la main).
+- **Éprouver le Web Push en réel** : le code (VAPID + chiffrement, abonnement,
+  Service Worker, **statut de livraison**) est livré mais **non validé de bout en
+  bout** — exige un navigateur **installé** (iOS ≥ 16.4 en PWA installée). Un
+  bouton **« Notification test »** (réglages) déclenche un envoi immédiat à soi.
+- **E-mail** dans `notify` : canal **non câblé** (seuls webhook + push le sont).
+  L'ouverture publique demande un **SMTP custom** (l'e-mail Supabase par défaut
+  est plafonné) et une **politique d'inscription** (ouverte vs comptes manuels).
+- **Connecteurs par source réelle** : le moteur générique et le dry-run existent,
+  mais brancher leboncoin / SeLoger / … reste **suspendu à l'existence d'une
+  API/flux autorisé** (voir hypothèses).
+- **Dette technique** (non bloquante) : typage Supabase complet
+  (`database.types.ts`), tests des helpers Edge (DVF), embeddings pgvector.
 
 ## ⚠️ Hypothèses & incertitudes (rien d'inventé)
 
@@ -89,7 +107,7 @@ Zustand + Zod, config partagée `@mister-guiiug/dev-wpa-config`).
 ┌─────────────────────────── Supabase ────────────────▼──────────────────────────┐
 │  PostgreSQL : schéma normalisé + RLS deny-by-default + audit (triggers)         │
 │  pg_cron (horaire) → pg_net → Edge Function `ingest-run` (service_role)          │
-│  Edge Function `notify` (webhook / [push,email à durcir])                        │
+│  Edge `notify` (webhook + Web Push VAPID + statut) · `dvf` · `*-test`            │
 │  Storage privé `listing-media`                                                   │
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -168,18 +186,20 @@ connexion). Lancer `npx prettier --write .` avant tout commit (la CI vérifie
 - [x] Vérification métier (checklist, niveau de confiance, anomalies)
 - [x] Enrichissement géocodage (BAN)
 - [x] Journal des traitements (runs / événements d'ingestion)
-- [ ] Connecteurs `authorized_api` réels (par source autorisée)
-- [ ] Web Push (VAPID) + e-mail (résumé quotidien/hebdo)
-- [ ] Cœur métier partagé front ↔ Edge Functions (package commun)
-- [ ] Prix de référence (DVF, à confirmer)
+- [~] Connecteurs `authorized_api` : moteur générique + **dry-run** livrés ;
+  brancher une **source réelle** reste suspendu à une API autorisée
+- [x] **Web Push (VAPID)** + **statut de livraison** (à éprouver navigateur
+      installé) · e-mail : à câbler
+- [x] **Cœur métier partagé** front ↔ Edge Functions (`_shared/core`, généré)
+- [x] **Prix de référence DVF** (Edge `dvf`, prix au m²)
 
 ### V3
 
 - [x] Carte interactive (marqueurs + zones)
-- [ ] Dessin de **polygone** de zone sur la carte
+- [x] Dessin de **polygone** de zone sur la carte (`ZonePolygonEditor`)
 - [ ] Similarité par **embeddings** (pgvector) en option (après l'heuristique)
-- [ ] Multi-zones, partage de recherches, rôles d'équipe
-- [ ] Observabilité (métriques pipeline, dashboards), alerting
+- [x] **Partage de recherches** (lecture) · multi-zones / rôles d'équipe : à venir
+- [x] **Statut de livraison** des notifications (par canal) · dashboards : à venir
 - [ ] **SMTP custom** + politique d'inscription (ouverture publique)
 
 ## 🧪 Tests
@@ -190,7 +210,8 @@ npm test
 
 Couvrent : normalisation FR, similarité textuelle/géo/image, scoring, deltas de
 prix, clustering, **plan d'ingestion** (nouveau vs maj, baisse de prix, recyclage,
-exclusion hors zone), **mappers** Supabase, **géocodeur** BAN et **file de synchro**.
+exclusion hors zone), **mappers** Supabase (dont **statut de livraison**),
+**géocodeur** BAN, **file de synchro** et **pagination du dépôt**.
 
 ## 📁 Structure
 
@@ -206,8 +227,8 @@ src/
                notifications, processing, settings, import)
   lib/         formatage, géocodeur (BAN), appui long
 supabase/
-  migrations/  0001_schema · 0002_rls · 0003_seed · 0004_scheduling · 0005_notifications_dispatch
-  functions/   ingest-run · notify · _shared
+  migrations/  0001_schema … 0009_notification_delivery (RLS, planif, partage, livraison)
+  functions/   ingest-run · notify · dvf · connector-test · notify-test · _shared (core généré)
 ```
 
 ## 📝 Licence

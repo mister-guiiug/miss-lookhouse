@@ -8,11 +8,87 @@ import {
   ShieldAlert,
   Sparkles,
 } from 'lucide-react';
-import type { MouseEvent as ReactMouseEvent } from 'react';
+import type { CSSProperties, MouseEvent as ReactMouseEvent } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { timeAgo } from '../../lib/format';
 import { useLongPress } from '../../lib/useLongPress';
 import type { LhNotificationType, LocalNotification } from '../../store/types';
+
+const DANGER: CSSProperties = {
+  color: 'var(--danger)',
+  borderColor: 'var(--danger)',
+};
+const WARN: CSSProperties = { color: '#b45309', borderColor: '#b45309' };
+
+/**
+ * Statut de livraison (mode Supabase). `dispatchedAt === undefined` ⇒ mode local
+ * (pas de dispatch serveur) ⇒ rien. `null` ⇒ pas encore envoyée. Sinon, une
+ * pastille par canal effectivement tenté (les canaux non configurés sont masqués).
+ */
+function DeliveryRow({ n }: { n: LocalNotification }) {
+  if (n.dispatchedAt === undefined) return null;
+
+  const chips: {
+    key: string;
+    text: string;
+    cls: string;
+    style?: CSSProperties;
+  }[] = [];
+
+  if (n.dispatchedAt === null) {
+    chips.push({
+      key: 'pending',
+      text: '⏳ envoi en attente',
+      cls: 'badge badge-muted',
+    });
+  } else {
+    const ch = n.delivery?.channels;
+    if (ch?.webhook === 'sent')
+      chips.push({ key: 'w', text: 'webhook ✓', cls: 'badge badge-ok' });
+    else if (ch?.webhook === 'failed')
+      chips.push({ key: 'w', text: 'webhook ✗', cls: 'badge', style: DANGER });
+
+    const sent = n.delivery?.pushSent ?? 0;
+    const total = sent + (n.delivery?.pushFailed ?? 0);
+    if (ch?.push === 'sent')
+      chips.push({ key: 'p', text: 'push ✓', cls: 'badge badge-ok' });
+    else if (ch?.push === 'partial')
+      chips.push({
+        key: 'p',
+        text: `push ◐ ${sent}/${total}`,
+        cls: 'badge',
+        style: WARN,
+      });
+    else if (ch?.push === 'failed')
+      chips.push({ key: 'p', text: 'push ✗', cls: 'badge', style: DANGER });
+    else if (ch?.push === 'no_subscription')
+      chips.push({
+        key: 'p',
+        text: 'push : aucun appareil',
+        cls: 'badge badge-muted',
+      });
+
+    if (chips.length === 0)
+      chips.push({
+        key: 'none',
+        text: 'aucun canal activé',
+        cls: 'badge badge-muted',
+      });
+  }
+
+  return (
+    <div
+      className="row"
+      style={{ gap: '0.3rem', marginTop: '0.4rem', flexWrap: 'wrap' }}
+    >
+      {chips.map(c => (
+        <span key={c.key} className={c.cls} style={c.style}>
+          {c.text}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 const ICON: Record<LhNotificationType, typeof BellRing> = {
   new_listing: Sparkles,
@@ -68,6 +144,7 @@ function NotificationItem({ n }: { n: LocalNotification }) {
               Non lue
             </span>
           )}
+          <DeliveryRow n={n} />
         </div>
       </div>
     </div>

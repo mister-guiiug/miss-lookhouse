@@ -57,8 +57,10 @@ Deno.serve(async (req: Request) => {
     .select('id, user_id, title, body, listing_id')
     .order('created_at', { ascending: true })
     .limit(200);
+  // DISPATCH-ONCE même par id : on ne (re)traite qu'une notification NON encore
+  // dispatchée (notify-test crée toujours une notif fraîche → dispatchée une fois).
   query = body.notificationId
-    ? query.eq('id', body.notificationId)
+    ? query.eq('id', body.notificationId).is('dispatched_at', null)
     : query.is('dispatched_at', null);
 
   const { data, error } = await query;
@@ -94,71 +96,123 @@ Deno.serve(async (req: Request) => {
     return list;
   };
 
+  // Statut de livraison par canal (persisté dans notifications.delivery, cf. 0009).
+  type ChannelStatus =
+    | 'sent'
+    | 'partial'
+    | 'failed'
+    | 'skipped'
+    | 'no_subscription';
+  interface Delivery {
+    at: string;
+    channels: { webhook: ChannelStatus; push: ChannelStatus };
+    pushSent: number;
+    pushFailed: number;
+  }
+
+  const dispatchedAt = new Date().toISOString();
   let webhookSent = 0;
   let pushSent = 0;
   const processedIds: string[] = [];
+  const deliveryById = new Map<string, Delivery>();
+
   for (const n of notifs) {
     const prefs = await getPrefs(n.user_id);
+    let webhook: ChannelStatus = 'skipped';
+    let push: ChannelStatus = 'skipped';
+    let nPushSent = 0;
+    let nPushFailed = 0;
 
     // — Canal WEBHOOK —
     if (prefs?.webhook_url) {
       try {
-        await fetchWithTimeout(prefs.webhook_url, {
+        const res = await fetchWithTimeout(prefs.webhook_url, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ text: `${n.title} — ${n.body ?? ''}` }),
         });
-        webhookSent++;
+        webhook = res.ok ? 'sent' : 'failed';
       } catch (_e) {
         // Webhook cassé : ne bloque pas l'estampillage (anti-boucle).
+        webhook = 'failed';
       }
+      if (webhook === 'sent') webhookSent++;
     }
 
     // — Canal WEB PUSH (VAPID) —
     if (PUSH_READY && prefs?.webpush_enabled) {
       const subs = await getSubs(n.user_id);
-      const payload = JSON.stringify({
-        title: n.title,
-        body: n.body ?? '',
-        url: n.listing_id
-          ? `./#/annonces/${n.listing_id}`
-          : './#/notifications',
-        tag: n.id,
-      });
-      for (const sub of subs) {
-        try {
-          await webpush.sendNotification(
-            {
-              endpoint: sub.endpoint,
-              keys: { p256dh: sub.p256dh, auth: sub.auth },
-            },
-            payload,
-            { timeout: 8000 }
-          );
-          pushSent++;
-        } catch (e) {
-          // 404/410 : abonnement expiré → on le supprime.
-          const code =
-            e && typeof e === 'object' && 'statusCode' in e
-              ? (e as { statusCode: number }).statusCode
-              : 0;
-          if (code === 404 || code === 410) {
-            await supabase.from('push_subscriptions').delete().eq('id', sub.id);
+      if (subs.length === 0) {
+        push = 'no_subscription';
+      } else {
+        const payload = JSON.stringify({
+          title: n.title,
+          body: n.body ?? '',
+          url: n.listing_id
+            ? `./#/annonces/${n.listing_id}`
+            : './#/notifications',
+          tag: n.id,
+        });
+        for (const sub of subs) {
+          try {
+            await webpush.sendNotification(
+              {
+                endpoint: sub.endpoint,
+                keys: { p256dh: sub.p256dh, auth: sub.auth },
+              },
+              payload,
+              { timeout: 8000 }
+            );
+            nPushSent++;
+          } catch (e) {
+            nPushFailed++;
+            // 404/410 : abonnement expiré → on le supprime.
+            const code =
+              e && typeof e === 'object' && 'statusCode' in e
+                ? (e as { statusCode: number }).statusCode
+                : 0;
+            if (code === 404 || code === 410) {
+              await supabase
+                .from('push_subscriptions')
+                .delete()
+                .eq('id', sub.id);
+            }
           }
         }
+        push =
+          nPushFailed === 0 ? 'sent' : nPushSent === 0 ? 'failed' : 'partial';
+        pushSent += nPushSent;
       }
     }
 
+    deliveryById.set(n.id, {
+      at: dispatchedAt,
+      channels: { webhook, push },
+      pushSent: nPushSent,
+      pushFailed: nPushFailed,
+    });
     processedIds.push(n.id);
   }
 
+  // Estampillage + statut de livraison, par notification (volume horaire faible).
   if (processedIds.length > 0) {
-    const { error: upErr } = await supabase
-      .from('notifications')
-      .update({ dispatched_at: new Date().toISOString() })
-      .in('id', processedIds);
-    if (upErr)
-      return json({ error: `Estampillage échoué : ${upErr.message}` }, 500);
+    const results = await Promise.all(
+      processedIds.map(id =>
+        supabase
+          .from('notifications')
+          .update({
+            dispatched_at: dispatchedAt,
+            delivery: deliveryById.get(id),
+          })
+          .eq('id', id)
+      )
+    );
+    const failed = results.find(r => r.error);
+    if (failed?.error)
+      return json(
+        { error: `Estampillage échoué : ${failed.error.message}` },
+        500
+      );
   }
 
   return json({
