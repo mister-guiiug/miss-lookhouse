@@ -38,7 +38,7 @@ const PAGE = 1000;
  * réponse à ~1000 lignes : sans pagination, l'hydratation perdrait des données
  * SILENCIEUSEMENT au-delà. On boucle par `.range()` jusqu'à une page incomplète.
  */
-async function fetchAllRows<T>(
+export async function fetchAllRows<T>(
   page: (
     from: number,
     to: number
