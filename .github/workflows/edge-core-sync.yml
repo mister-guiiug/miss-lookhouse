@@ -1,0 +1,33 @@
+name: Edge core sync
+
+# Garde anti-dérive : le cœur Edge (_shared/core) est GÉNÉRÉ depuis src/.
+# Si src/domain ou src/ingestion change sans régénération, front et Edge
+# divergent silencieusement. Ce job régénère et échoue si la copie commitée
+# n'est pas à jour. Le générateur n'a aucune dépendance npm (node pur).
+
+on:
+  pull_request:
+    paths:
+      - 'src/domain/**'
+      - 'src/ingestion/pipeline.ts'
+      - 'src/ingestion/schema.ts'
+      - 'src/ingestion/fieldMap.ts'
+      - 'scripts/build-edge-core.mjs'
+      - 'supabase/functions/_shared/core/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Régénérer le cœur Edge
+        run: node scripts/build-edge-core.mjs
+      - name: Vérifier que la copie commitée est à jour
+        run: git diff --exit-code -- supabase/functions/_shared/core
