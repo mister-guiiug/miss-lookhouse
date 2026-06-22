@@ -108,3 +108,31 @@ export async function deleteConnector(id: string): Promise<void> {
   const { error } = await s.from('source_connectors').delete().eq('id', id);
   if (error) throw new Error(error.message);
 }
+
+export interface ConnectorTestSample {
+  externalId: string;
+  title?: string | null;
+  price?: number | null;
+  city?: string | null;
+  surfaceM2?: number | null;
+}
+export interface ConnectorTestResult {
+  count?: number;
+  sample?: ConnectorTestSample[];
+  errors?: string[];
+  error?: string;
+}
+
+/** DRY-RUN d'une config de connecteur (fetch + map + normalise, sans écrire). */
+export async function testConnector(
+  config: ConnectorConfig & { secretRef?: string | null }
+): Promise<ConnectorTestResult> {
+  const s = getSupabase();
+  if (!s) return { error: 'Mode local : test indisponible.' };
+  const { data, error } = await s.functions.invoke<ConnectorTestResult>(
+    'connector-test',
+    { body: config }
+  );
+  if (error) return { error: error.message };
+  return data ?? {};
+}
