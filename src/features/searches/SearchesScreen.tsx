@@ -90,7 +90,9 @@ export function SearchesScreen() {
                   style={{ padding: '0.35rem 0.6rem' }}
                   onClick={() => {
                     if (
-                      window.confirm(`Supprimer la recherche « ${s.name} » ?`)
+                      window.confirm(
+                        `Supprimer la recherche « ${s.name} » ?\n\nSes annonces resteront dans « Annonces » mais ne seront plus rattachées à une recherche (ni partagées).`
+                      )
                     )
                       deleteSearch(s.id);
                   }}
