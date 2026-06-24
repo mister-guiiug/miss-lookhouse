@@ -16,7 +16,8 @@ import { createClient } from '@supabase/supabase-js';
 
 const URL = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const SYSTEM_EMAIL = process.env.COLLECTOR_EMAIL ?? 'collector@miss-lookhouse.test';
+const SYSTEM_EMAIL =
+  process.env.COLLECTOR_EMAIL ?? 'collector@miss-lookhouse.test';
 
 if (!URL || !KEY) {
   console.error('Définis SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY.');
@@ -48,9 +49,12 @@ const SOURCES = [
 ];
 
 async function ensureSystemUser() {
-  const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
+  const { data, error } = await admin.auth.admin.listUsers({
+    page: 1,
+    perPage: 200,
+  });
   if (error) throw new Error(`listUsers: ${error.message}`);
-  const found = data.users.find((u) => u.email === SYSTEM_EMAIL);
+  const found = data.users.find(u => u.email === SYSTEM_EMAIL);
   if (found) return found.id;
   const created = await admin.auth.admin.createUser({
     email: SYSTEM_EMAIL,
@@ -135,17 +139,19 @@ async function main() {
   for (const s of SOURCES) await ensureSource(s);
   const searchId = await ensureSearch(
     userId,
-    SOURCES.map((s) => s.id)
+    SOURCES.map(s => s.id)
   );
   console.log(`Recherche « Agences 63 » : ${searchId}`);
   for (const s of SOURCES) {
     const id = await ensureConnector(userId, s);
     console.log(`Connecteur ${s.id} (${s.config.kind}) : ${id}`);
   }
-  console.log('\nAmorçage terminé. Le prochain cron ingest-run collectera les annonces.');
+  console.log(
+    '\nAmorçage terminé. Le prochain cron ingest-run collectera les annonces.'
+  );
 }
 
-main().catch((e) => {
+main().catch(e => {
   console.error(e instanceof Error ? e.message : e);
   process.exit(1);
 });
