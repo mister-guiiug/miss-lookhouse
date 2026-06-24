@@ -30,6 +30,8 @@ import type {
   CanonicalListing,
   SearchCriteria,
 } from '../_shared/core/domain/types.ts';
+import { collectSite } from '../_shared/core/ingestion/sites/registry.ts';
+import type { SiteFetch } from '../_shared/core/ingestion/sites/types.ts';
 
 type Supa = ReturnType<typeof adminClient>;
 const nowIso = () => new Date().toISOString();
@@ -193,6 +195,35 @@ async function runSearch(supabase: Supa, search: DueSearch) {
   return { search: search.name, status: 'ok', stats };
 }
 
+const COLLECTOR_UA =
+  'miss-lookhouse-collector/1.0 (+https://github.com/mister-guiiug/miss-lookhouse; collecte responsable)';
+
+/** Fetch injecté aux connecteurs de site : anti-SSRF + timeout sur CHAQUE URL. */
+function siteFetch(): SiteFetch {
+  return {
+    async text(u: string): Promise<string> {
+      await assertPublicHttpsUrl(u);
+      const r = await fetchWithTimeout(
+        u,
+        { headers: { 'user-agent': COLLECTOR_UA } },
+        10000
+      );
+      if (!r.ok) throw new Error(`HTTP ${r.status} (${u})`);
+      return await r.text();
+    },
+    async json<T>(u: string): Promise<T> {
+      await assertPublicHttpsUrl(u);
+      const r = await fetchWithTimeout(
+        u,
+        { headers: { accept: 'application/json', 'user-agent': COLLECTOR_UA } },
+        10000
+      );
+      if (!r.ok) throw new Error(`HTTP ${r.status} (${u})`);
+      return (await r.json()) as T;
+    },
+  };
+}
+
 /** Récupère + normalise les annonces d'un connecteur autorisé (collecte responsable). */
 async function fetchConnector(connector: {
   source_id: string;
@@ -200,6 +231,22 @@ async function fetchConnector(connector: {
   secret_ref: string | null;
 }): Promise<{ listings: CanonicalListing[]; errors: string[] }> {
   const cfg = (connector.config ?? {}) as Record<string, unknown>;
+  const kind = typeof cfg.kind === 'string' ? cfg.kind : 'json_api';
+
+  // Connecteur de SITE (collecte multi-étapes : API + sitemap + HTML), porté
+  // dans le cœur partagé. Le fetch injecté applique l'anti-SSRF sur CHAQUE URL.
+  if (kind !== 'json_api') {
+    const { raws, warnings } = await collectSite(kind, cfg, {
+      fetcher: siteFetch(),
+      limit: cfg.maxListings != null ? Number(cfg.maxListings) : 200,
+    });
+    const { listings, errors } = parseListings(
+      raws.map(r => ({ ...r, sourceId: connector.source_id }))
+    );
+    return { listings, errors: [...errors, ...warnings] };
+  }
+
+  // Connecteur API JSON (historique) : une seule URL configurée.
   const url = typeof cfg.url === 'string' ? cfg.url : '';
   // Anti-SSRF : https + hôte PUBLIC uniquement (refuse loopback / IP privées).
   await assertPublicHttpsUrl(url);
