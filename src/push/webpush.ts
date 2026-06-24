@@ -84,6 +84,37 @@ export async function enablePush(): Promise<{ ok: boolean; error?: string }> {
   return { ok: true };
 }
 
+/** Résumé renvoyé par le dispatch de la notification de test. */
+export interface TestDispatch {
+  webhookSent?: number;
+  pushSent?: number;
+  dispatched?: number;
+}
+
+/**
+ * Envoie une notification de TEST à soi-même (Edge `notify-test`, JWT) : crée
+ * l'alerte puis déclenche son dispatch immédiat (webhook + web push). Permet de
+ * valider la chaîne de livraison de bout en bout. Le statut détaillé par canal
+ * apparaît ensuite dans le centre de notifications.
+ */
+export async function sendTestNotification(): Promise<{
+  ok: boolean;
+  error?: string;
+  dispatch?: TestDispatch | null;
+}> {
+  const s = getSupabase();
+  if (!s) return { ok: false, error: 'Mode local.' };
+  const { data, error } = await s.functions.invoke('notify-test', { body: {} });
+  if (error) return { ok: false, error: error.message };
+  const d = data as {
+    ok?: boolean;
+    error?: string;
+    dispatch?: TestDispatch | null;
+  } | null;
+  if (!d?.ok) return { ok: false, error: d?.error ?? 'Échec de l’envoi.' };
+  return { ok: true, dispatch: d.dispatch ?? null };
+}
+
 /** Se désabonne (navigateur + base) et coupe la préférence. */
 export async function disablePush(): Promise<{ ok: boolean; error?: string }> {
   const s = getSupabase();

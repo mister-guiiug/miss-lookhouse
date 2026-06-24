@@ -11,6 +11,7 @@ import type {
   LocalSearch,
   LocalSimilarity,
   LocalVerification,
+  NotificationDelivery,
   PricePoint,
   UserStatus,
   WatchFrequency,
@@ -95,6 +96,8 @@ export interface NotificationRow {
   listing_id: string | null;
   read_at: string | null;
   created_at: string;
+  dispatched_at?: string | null;
+  delivery?: NotificationDelivery | null;
 }
 
 export interface SimilarityRow {
@@ -214,6 +217,8 @@ export function notificationFromRow(r: NotificationRow): LocalNotification {
     listingId: r.listing_id ?? undefined,
     createdAt: r.created_at,
     readAt: r.read_at,
+    dispatchedAt: r.dispatched_at ?? null,
+    delivery: r.delivery ?? null,
   };
 }
 

@@ -164,5 +164,31 @@ describe('status & notification mappers', () => {
     expect(n.type).toBe('price_drop');
     expect(n.body).toBe('');
     expect(n.listingId).toBe('L1');
+    // Anciennes lignes (avant 0009) : pas de statut de livraison.
+    expect(n.dispatchedAt).toBeNull();
+    expect(n.delivery).toBeNull();
+  });
+
+  it('notification avec statut de livraison', () => {
+    const n = notificationFromRow({
+      id: 'n2',
+      type: 'new_listing',
+      title: 'Nouvelle annonce',
+      body: 'Détails',
+      listing_id: null,
+      read_at: null,
+      created_at: '2026-06-21T08:00:00Z',
+      dispatched_at: '2026-06-21T08:01:00Z',
+      delivery: {
+        at: '2026-06-21T08:01:00Z',
+        channels: { webhook: 'sent', push: 'partial' },
+        pushSent: 1,
+        pushFailed: 1,
+      },
+    });
+    expect(n.dispatchedAt).toBe('2026-06-21T08:01:00Z');
+    expect(n.delivery?.channels?.webhook).toBe('sent');
+    expect(n.delivery?.channels?.push).toBe('partial');
+    expect(n.delivery?.pushSent).toBe(1);
   });
 });

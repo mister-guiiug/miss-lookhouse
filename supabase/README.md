@@ -30,7 +30,9 @@ inoffensive car **toute la sécurité est appliquée ici**, jamais par le client
   `SUPABASE_DB_PASSWORD`.
 
 Ordre : `0001_schema` → `0002_rls` → `0003_seed` (référentiel sources) →
-`0004_scheduling` (pg_cron + pg_net) → `0005_notifications_dispatch`.
+`0004_scheduling` (pg_cron + pg_net) → `0005_notifications_dispatch` →
+`0006_search_sharing` → `0007_list_shares` → `0008_share_neutral` →
+`0009_notification_delivery` (statut de livraison + garde de colonne).
 
 ## 3. Storage
 
@@ -54,9 +56,18 @@ le MÊME plan (`planIngestion`) que le front. Régénérer avant tout déploieme
 
 ```bash
 npm run build:edge-core          # régénère supabase/functions/_shared/core (NE PAS éditer la copie)
+# Gated par INGEST_TOKEN (cron / serveur) → JWT désactivé :
 supabase functions deploy ingest-run --no-verify-jwt
-supabase functions deploy notify --no-verify-jwt
+supabase functions deploy notify     --no-verify-jwt
+supabase functions deploy dvf        --no-verify-jwt
+# Appelées par l'utilisateur (JWT requis) → verify_jwt PAR DÉFAUT (ne pas désactiver) :
+supabase functions deploy connector-test
+supabase functions deploy notify-test
 ```
+
+> `notify-test` crée une notification de test pour l'appelant (résolu via son JWT)
+> puis appelle `notify` avec `INGEST_TOKEN` pour la dispatcher immédiatement
+> (webhook + Web Push) et renseigner son **statut de livraison** (`delivery`).
 
 Secrets (jamais dans le code) :
 
@@ -128,9 +139,10 @@ VITE_VAPID_PUBLIC_KEY=<clé publique VAPID>
 
 - **Collecte par source** : seuls les connecteurs `authorized_api` collectent
   automatiquement. Aucun scraping de portail n'est fourni (choix responsable).
-- **Web Push** : la signature VAPID + le chiffrement aes128gcm restent à
-  implémenter dans `notify` (le webhook est fonctionnel).
-- **E-mail** : brancher un fournisseur SMTP/API.
+- **Web Push** : ✅ livré dans `notify` (VAPID + chiffrement via `npm:web-push`,
+  abonnement + Service Worker + **statut de livraison**). Reste à **éprouver de
+  bout en bout** sur navigateur **installé** (bouton « Notification test »).
+- **E-mail** : canal non câblé dans `notify` — brancher un fournisseur SMTP/API.
 - **Cœur métier partagé** : ✅ fait — `_shared/core` est généré depuis `src/`
   (`npm run build:edge-core`) et `ingest-run` rejoue exactement la même logique de
   normalisation/scoring/dédup que le front (validé en live).
