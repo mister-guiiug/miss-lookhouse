@@ -22,6 +22,7 @@
     "supabase:push": "supabase db push",
     "supabase:types": "supabase gen types typescript --linked > src/backend/database.types.ts",
     "build:edge-core": "node scripts/build-edge-core.mjs && prettier --write \"supabase/functions/_shared/core/**/*.ts\"",
+    "seed:agences": "node scripts/seed-agences.mjs",
     "prepare": "husky || true"
   },
   "lint-staged": {

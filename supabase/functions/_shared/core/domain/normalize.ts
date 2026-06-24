@@ -49,16 +49,18 @@ export function parseNumberFr(
   return Number.isFinite(n) ? n : null;
 }
 
+// `s?` tolère les pluriels (les taxonomies de site pluralisent : « Maisons »,
+// « Appartements », « Terrains »…).
 const PROPERTY_TYPE_MAP: ReadonlyArray<readonly [RegExp, string]> = [
   [
-    /\b(appartement|appart|appt|studio|t[1-9]|f[1-9]|duplex|loft)\b/,
+    /\b(appartement|appart|appt|studio|t[1-9]|f[1-9]|duplex|loft)s?\b/,
     'appartement',
   ],
-  [/\b(maison|villa|pavillon|longere|mas|chalet)\b/, 'maison'],
-  [/\b(terrain|parcelle|foncier)\b/, 'terrain'],
-  [/\b(parking|garage|box)\b/, 'parking'],
-  [/\b(immeuble)\b/, 'immeuble'],
-  [/\b(local|commerce|bureau|entrepot|hangar)\b/, 'local'],
+  [/\b(maison|villa|pavillon|longere|mas|chalet)s?\b/, 'maison'],
+  [/\b(terrain|parcelle|foncier)s?\b/, 'terrain'],
+  [/\b(parking|garage|box)s?\b/, 'parking'],
+  [/\b(immeuble)s?\b/, 'immeuble'],
+  [/\b(local|commerce|bureau|entrepot|hangar)s?\b/, 'local'],
 ];
 
 /** Normalise un type de bien hétérogène vers une valeur canonique. */

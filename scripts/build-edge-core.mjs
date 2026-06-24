@@ -39,7 +39,11 @@ const ingestionFiles = [
   'ingestion/schema.ts',
   'ingestion/fieldMap.ts',
 ];
-const FILES = [...domainFiles, ...ingestionFiles];
+// Connecteurs de site (collecte multi-étapes) : tout le dossier sauf les tests.
+const siteFiles = readdirSync(join(ROOT, 'src/ingestion/sites'))
+  .filter(f => f.endsWith('.ts') && !f.endsWith('.test.ts'))
+  .map(f => `ingestion/sites/${f}`);
+const FILES = [...domainFiles, ...ingestionFiles, ...siteFiles];
 
 /** Transforme un module source en module Deno-compatible. */
 function toDeno(code, relFromSrc) {
