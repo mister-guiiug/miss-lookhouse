@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { formatDate, timeAgo } from '../../lib/format';
 import { IS_SUPABASE } from '../../backend/config';
 import { fetchIngestionRuns } from '../../backend/ingestionRuns';
+import { triggerIngestNow } from '../../backend/ingest';
 import { aggregateRuns } from '../../lib/runStats';
 import type { IngestionRun } from '../../store/types';
 
@@ -43,13 +44,40 @@ export function ProcessingScreen() {
   const localRuns = useAppStore(s => s.data.runs);
   const [serverRuns, setServerRuns] = useState<IngestionRun[]>([]);
   const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadRuns = useCallback(() => {
     if (!IS_SUPABASE) return;
     fetchIngestionRuns()
       .then(setServerRuns)
       .catch(e => setErr(e instanceof Error ? e.message : String(e)));
   }, []);
+
+  useEffect(() => {
+    loadRuns();
+  }, [loadRuns]);
+
+  async function refreshCatalog() {
+    setBusy(true);
+    setErr(null);
+    setMsg(null);
+    try {
+      const res = await triggerIngestNow();
+      const done = res.results.filter(r => r.status === 'ok').length;
+      const skipped = res.results.filter(r => r.status === 'too-recent').length;
+      setMsg(
+        `Collecte lancée : ${done} recherche(s) traitée(s)` +
+          (skipped ? `, ${skipped} ignorée(s) (trop récente)` : '') +
+          '.'
+      );
+      loadRuns();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const all = [...(localRuns ?? []), ...serverRuns];
   const sorted = [...all].sort((a, b) => b.at.localeCompare(a.at));
@@ -61,6 +89,26 @@ export function ProcessingScreen() {
       <p className="muted" style={{ fontSize: '0.84rem' }}>
         Historique des imports et collectes (le plus récent en premier).
       </p>
+
+      {IS_SUPABASE && (
+        <div
+          className="row"
+          style={{
+            gap: '0.6rem',
+            alignItems: 'center',
+            margin: '0.2rem 0 0.8rem',
+          }}
+        >
+          <button className="btn" onClick={refreshCatalog} disabled={busy}>
+            {busy ? 'Collecte en cours…' : 'Actualiser le catalogue'}
+          </button>
+          {msg && (
+            <span className="muted" style={{ fontSize: '0.82rem' }}>
+              {msg}
+            </span>
+          )}
+        </div>
+      )}
 
       {m.total > 0 && (
         <div className="card">
