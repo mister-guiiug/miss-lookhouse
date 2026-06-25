@@ -8,6 +8,7 @@ import {
   type WordPressRestConfig,
 } from './wordpressRest';
 import { collectSitemapHtml, type SitemapHtmlConfig } from './sitemapHtml';
+import { collectNetty, type NettyConfig } from './netty';
 
 export async function collectSite(
   kind: string,
@@ -19,6 +20,8 @@ export async function collectSite(
       return collectWordPressRest(cfg as unknown as WordPressRestConfig, ctx);
     case 'sitemap_html':
       return collectSitemapHtml(cfg as unknown as SitemapHtmlConfig, ctx);
+    case 'netty':
+      return collectNetty(cfg as unknown as NettyConfig, ctx);
     default:
       return {
         raws: [],

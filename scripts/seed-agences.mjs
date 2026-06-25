@@ -79,6 +79,28 @@ const SOURCES = [
       maxListings: 60,
     },
   },
+  {
+    id: 'bsleimmo',
+    label: 'BSL Immobilier',
+    homepage: 'https://www.bsleimmo.com',
+    config: {
+      kind: 'netty',
+      sitemapUrl: 'https://www.bsleimmo.com/sitemap.xml',
+      detailUrlPattern: '/vente/[^,]+,V',
+      maxListings: 60,
+    },
+  },
+  {
+    id: 'lesclesdechloe',
+    label: 'Les Clés de Chloé',
+    homepage: 'https://www.lesclesdechloe.fr',
+    config: {
+      kind: 'netty',
+      sitemapUrl: 'https://www.lesclesdechloe.fr/sitemap.xml',
+      detailUrlPattern: '/immobilier/.*vente.*_V',
+      maxListings: 60,
+    },
+  },
 ];
 
 async function ensureSystemUser() {
