@@ -16,6 +16,10 @@ import {
   collectJsonLdSitemap,
   type JsonLdSitemapConfig,
 } from './jsonldSitemap.ts';
+import {
+  collectSitemapNetwork,
+  type SitemapNetworkConfig,
+} from './sitemapNetwork.ts';
 
 export async function collectSite(
   kind: string,
@@ -31,6 +35,8 @@ export async function collectSite(
       return collectNetty(cfg as unknown as NettyConfig, ctx);
     case 'jsonld_sitemap':
       return collectJsonLdSitemap(cfg as unknown as JsonLdSitemapConfig, ctx);
+    case 'sitemap_network':
+      return collectSitemapNetwork(cfg as unknown as SitemapNetworkConfig, ctx);
     default:
       return {
         raws: [],

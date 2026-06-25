@@ -103,3 +103,44 @@ export function listingKeyFromUrl(url: string | null): string | null {
     return null;
   }
 }
+
+/** Contenu d'une balise meta `og:`/`twitter:`/`product:` (ordre attribut indifférent). */
+export function extractMeta(html: string, property: string): string | null {
+  const p = property.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return (
+    new RegExp(
+      `<meta[^>]+(?:property|name)=["']${p}["'][^>]+content=["']([^"']*)["']`,
+      'i'
+    ).exec(html)?.[1] ??
+    new RegExp(
+      `<meta[^>]+content=["']([^"']*)["'][^>]+(?:property|name)=["']${p}["']`,
+      'i'
+    ).exec(html)?.[1] ??
+    null
+  );
+}
+
+/** Ville + code postal depuis un segment d'URL « ville-slug-63000 ». */
+export function cityPostalFromUrl(url: string | null): {
+  city: string | null;
+  postalCode: string | null;
+} {
+  if (!url) return { city: null, postalCode: null };
+  let segs: string[];
+  try {
+    segs = new URL(url).pathname.split('/').filter(Boolean);
+  } catch {
+    return { city: null, postalCode: null };
+  }
+  for (const seg of segs) {
+    const m = /^(.+)-(\d{5})$/.exec(seg);
+    if (m?.[1] && m[2]) {
+      const city = m[1]
+        .split('-')
+        .map(t => t.charAt(0).toUpperCase() + t.slice(1))
+        .join(' ');
+      return { city, postalCode: m[2] };
+    }
+  }
+  return { city: null, postalCode: null };
+}
