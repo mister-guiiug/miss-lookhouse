@@ -114,6 +114,21 @@ const SOURCES = [
       maxListings: 60,
     },
   },
+  {
+    id: 'safti',
+    label: 'SAFTI',
+    homepage: 'https://www.safti.fr',
+    config: {
+      kind: 'sitemap_network',
+      sitemapUrls: [
+        'https://www.safti.fr/sitemaps/sitemap.annonce.maison.disponible.xml',
+        'https://www.safti.fr/sitemaps/sitemap.annonce.appartement.disponible.xml',
+        'https://www.safti.fr/sitemaps/sitemap.annonce.terrain.disponible.xml',
+      ],
+      detailUrlPattern: '/annonces/achat/[^/]+/[^/]+/[0-9]+',
+      maxListings: 50,
+    },
+  },
 ];
 
 async function ensureSystemUser() {
