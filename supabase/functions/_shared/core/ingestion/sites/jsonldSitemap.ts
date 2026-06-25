@@ -12,7 +12,7 @@
  * Chaque page détail est ensuite lue en HTML brut → JSON-LD → objet canonique.
  */
 import { extractJsonLd, jsonLdToRaw } from './jsonld.ts';
-import { parseSitemapLocs } from './sitemap.ts';
+import { collectListingUrls, parseSitemapLocs } from './sitemap.ts';
 import type { SiteCollectContext, SiteCollectResult } from './types.ts';
 
 export interface JsonLdSitemapConfig {
@@ -44,16 +44,29 @@ export async function collectJsonLdSitemap(
     ctx.limit ?? Number.MAX_SAFE_INTEGER
   );
 
-  let locs: string[];
+  // 1) URLs détail : via le sitemap (descend un sitemapindex imbriqué, ex. iad),
+  //    sinon récolte sur les pages intermédiaires (sitemap listant des pages de
+  //    recherche dont on extrait les liens détail du HTML, ex. squarehabitat).
+  let detailUrls: string[];
   try {
-    locs = parseSitemapLocs(await ctx.fetcher.text(cfg.sitemapUrl));
+    detailUrls = await collectListingUrls(
+      ctx.fetcher,
+      cfg.sitemapUrl,
+      detailRe,
+      {
+        maxChildren: 30,
+      }
+    );
   } catch (e) {
     return { raws: [], warnings: [`sitemap ${cfg.sitemapUrl} : ${msg(e)}`] };
   }
-
-  // 1) Détermine les URLs détail : directes, sinon récolte sur pages intermédiaires.
-  let detailUrls = locs.filter(u => detailRe.test(u));
   if (detailUrls.length === 0) {
+    let locs: string[] = [];
+    try {
+      locs = parseSitemapLocs(await ctx.fetcher.text(cfg.sitemapUrl));
+    } catch (e) {
+      warnings.push(`sitemap ${cfg.sitemapUrl} : ${msg(e)}`);
+    }
     const seen = new Set<string>();
     for (const page of locs.slice(0, cfg.maxPages ?? 20)) {
       if (seen.size >= cap) break;

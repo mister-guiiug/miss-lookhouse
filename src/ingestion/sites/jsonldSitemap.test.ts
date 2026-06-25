@@ -60,4 +60,40 @@ describe('collectJsonLdSitemap', () => {
     expect(appart.postalCode).toBe('44000');
     expect(listings.some(l => l.propertyType === 'maison')).toBe(true);
   });
+
+  it('descend un sitemapindex imbriqué puis lit le JSON-LD (cas iad)', async () => {
+    // ads.xml (sitemapindex) -> house.xml (urlset de détails /annonce/.../r{id})
+    const INDEX = `<sitemapindex><sitemap><loc>https://ex.fr/sitemap/fr/ads/house.xml</loc></sitemap></sitemapindex>`;
+    const URLSET = `<urlset><url><loc>https://ex.fr/annonce/maison-vente-6-pieces-x/r2059153</loc></url></urlset>`;
+    const DETAIL = `<head><script type="application/ld+json">{"@graph":[{"@type":"SingleFamilyResidence","name":"Maison X","numberOfRooms":6,"floorSize":{"value":191},"address":{"addressLocality":"Les Pavillons-sous-Bois","postalCode":"93320"}},{"@type":"Offer","price":"625 000 €","priceCurrency":"EUR"}]}</script></head>`;
+    const fetcher = {
+      async text(url: string) {
+        if (url.endsWith('/ads.xml')) return INDEX;
+        if (url.endsWith('/house.xml')) return URLSET;
+        return DETAIL;
+      },
+      async json<T>() {
+        return [] as unknown as T;
+      },
+    };
+    const { raws, warnings } = await collectJsonLdSitemap(
+      {
+        sitemapUrl: 'https://ex.fr/sitemap/fr/ads.xml',
+        detailUrlPattern: '/annonce/[a-z0-9-]+/r[0-9]+$',
+      },
+      { fetcher }
+    );
+    expect(warnings).toEqual([]);
+    const { listings, errors } = parseListings(
+      raws.map(r => ({ ...r, sourceId: 'iadfrance' }))
+    );
+    expect(errors).toEqual([]);
+    const m = listings[0]!;
+    expect(m.propertyType).toBe('maison');
+    expect(m.rooms).toBe(6);
+    expect(m.surfaceM2).toBe(191);
+    expect(m.price).toBe(625000);
+    expect(m.city).toBe('Les Pavillons-sous-Bois');
+    expect(m.postalCode).toBe('93320');
+  });
 });
