@@ -1,11 +1,11 @@
 /**
  * Connecteur générique « sitemap plat → pages HTML » pour les CMS sans données
- * structurées (La Boite Immo, Netty…). Énumère les pages détail via le sitemap,
- * puis extrait les champs depuis le `<title>` (souvent dense, ex. « Vente maison
+ * structurées (La Boite Immo, Netty…). Énumère les pages détail via le sitemap
+ * (ou récolte les liens sur des pages catégorie si `crawlSeedPattern`), puis
+ * extrait les champs depuis le `<title>` (souvent dense, ex. « Vente maison
  * Bertignat 4 pièces 140m² 140000€ ») avec repli sur le corps HTML.
  *
- * Paramétré par `config` : `sitemapUrl` + `detailUrlPattern` (regex) → réutilisable
- * pour plusieurs agences sans nouveau code.
+ * Paramétré par `config` → réutilisable pour plusieurs agences sans nouveau code.
  */
 import {
   cityFromVenteTitle,
@@ -96,11 +96,11 @@ export async function collectSitemapHtml(
 
 /**
  * Détecte une page de LOCATION : « loyer », « mensuel » ou un montant suivi de
- * « €/mois ». On évite un « /mois » nu (présent parfois dans les coûts d'énergie).
+ * « €/mois ». `\s` couvre déjà les espaces insécables (pas de caractère littéral).
  */
 function isRental(html: string): boolean {
   const t = html.replace(/<[^>]+>/g, ' ');
-  return /(\bloyer\b|\bmensuel\b|\d[\d\s ]*\s*€\s*(?:cc|hc|charges comprises)?\s*\/\s*mois)/i.test(
+  return /(\bloyer\b|\bmensuel\b|\d[\d\s]*€\s*(?:cc|hc|charges comprises)?\s*\/\s*mois)/i.test(
     t
   );
 }
