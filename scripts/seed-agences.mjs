@@ -247,7 +247,14 @@ async function ensureSearch(userId, sourceIds) {
     .eq('user_id', userId)
     .eq('name', 'Agences 63')
     .maybeSingle();
-  if (existing?.id) return existing.id;
+  if (existing?.id) {
+    // Catalogue partagé + liste des sources rafraîchie à chaque seed.
+    await admin
+      .from('saved_searches')
+      .update({ is_public: true, source_ids: sourceIds })
+      .eq('id', existing.id);
+    return existing.id;
+  }
   const { data, error } = await admin
     .from('saved_searches')
     .insert({
@@ -256,6 +263,7 @@ async function ensureSearch(userId, sourceIds) {
       source_ids: sourceIds,
       frequency: 'daily',
       active: true,
+      is_public: true,
     })
     .select('id')
     .single();
