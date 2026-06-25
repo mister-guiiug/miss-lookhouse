@@ -68,3 +68,38 @@ export function isForSaleStatus(statusName: string): boolean {
   if (/vendu/.test(s)) return false;
   return /(vendre|offre|compromis|disponible|vente)/.test(s) || s === 'vente';
 }
+
+/** Contenu de la balise <title>, suffixe « | Site » retiré. */
+export function extractTitleTag(html: string): string | null {
+  const m = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html);
+  if (!m?.[1]) return null;
+  const t = m[1].replace(/\s+/g, ' ').trim();
+  return t.split('|')[0]?.trim() || t || null;
+}
+
+/** Nombre de pièces depuis « 4 pièces ». */
+export function extractRooms(text: string): number | null {
+  const m = /(\d+)\s*pi[èe]ces?/i.exec(text);
+  return m?.[1] ? parseNumberFr(m[1]) : null;
+}
+
+/**
+ * Ville depuis un titre « Vente {type} {Ville} … {N}m²/{N} pièces … » (La Boite
+ * Immo, Netty…). Best-effort : lettres entre le type et le 1er nombre.
+ */
+export function cityFromVenteTitle(title: string | null): string | null {
+  if (!title) return null;
+  const m = /vente\s+\p{L}+\s+(\p{L}[\p{L}\s'’-]*?)\s+\d/iu.exec(title);
+  return m?.[1]?.trim() || null;
+}
+
+/** Clé d'annonce stable = dernier segment de chemin de l'URL. */
+export function listingKeyFromUrl(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    const segs = new URL(url).pathname.split('/').filter(Boolean);
+    return segs.length ? (segs[segs.length - 1] ?? null) : null;
+  } catch {
+    return null;
+  }
+}
