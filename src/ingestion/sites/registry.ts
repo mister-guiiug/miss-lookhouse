@@ -9,6 +9,10 @@ import {
 } from './wordpressRest';
 import { collectSitemapHtml, type SitemapHtmlConfig } from './sitemapHtml';
 import { collectNetty, type NettyConfig } from './netty';
+import {
+  collectJsonLdSitemap,
+  type JsonLdSitemapConfig,
+} from './jsonldSitemap';
 
 export async function collectSite(
   kind: string,
@@ -22,6 +26,8 @@ export async function collectSite(
       return collectSitemapHtml(cfg as unknown as SitemapHtmlConfig, ctx);
     case 'netty':
       return collectNetty(cfg as unknown as NettyConfig, ctx);
+    case 'jsonld_sitemap':
+      return collectJsonLdSitemap(cfg as unknown as JsonLdSitemapConfig, ctx);
     default:
       return {
         raws: [],
