@@ -20,13 +20,21 @@ import {
   extractTitleTag,
   listingKeyFromUrl,
 } from './extract.ts';
-import { collectListingUrls } from './sitemap.ts';
+import { resolveDetailUrls } from './sitemap.ts';
 import type { SiteCollectContext, SiteCollectResult } from './types.ts';
 
 export interface SitemapHtmlConfig {
   sitemapUrl: string;
   /** Regex (source) identifiant les URLs de pages DÉTAIL (vs index/catégories). */
   detailUrlPattern: string;
+  /** Si le sitemap liste des pages catégorie : regex des pages à crawler. */
+  crawlSeedPattern?: string;
+  /** Base pour résoudre les hrefs relatifs récoltés. */
+  baseUrl?: string;
+  /** Plafond de pages intermédiaires à crawler. */
+  maxPages?: number;
+  /** Exclure les annonces de LOCATION (sitemaps mêlant vente+location, ex. okey). */
+  saleOnly?: boolean;
   maxListings?: number;
 }
 
@@ -42,23 +50,30 @@ export async function collectSitemapHtml(
     return { raws: [], warnings: [`detailUrlPattern invalide : ${msg(e)}`] };
   }
 
+  const cap = Math.min(
+    cfg.maxListings ?? 200,
+    ctx.limit ?? Number.MAX_SAFE_INTEGER
+  );
+
   let urls: string[];
   try {
-    urls = await collectListingUrls(ctx.fetcher, cfg.sitemapUrl, pattern, {
-      maxChildren: 30,
+    urls = await resolveDetailUrls(ctx.fetcher, cfg.sitemapUrl, pattern, {
+      base: cfg.baseUrl,
+      maxPages: cfg.maxPages,
+      cap: cap * 3,
+      seedPattern: cfg.crawlSeedPattern
+        ? new RegExp(cfg.crawlSeedPattern)
+        : undefined,
     });
   } catch (e) {
     return { raws: [], warnings: [`sitemap ${cfg.sitemapUrl} : ${msg(e)}`] };
   }
 
-  const cap = Math.min(
-    cfg.maxListings ?? 200,
-    ctx.limit ?? Number.MAX_SAFE_INTEGER
-  );
   const raws: Array<Record<string, unknown>> = [];
   for (const url of urls.slice(0, cap)) {
     try {
       const html = await ctx.fetcher.text(url);
+      if (cfg.saleOnly && isRental(html)) continue; // exclut les locations
       const title = extractTitleTag(html);
       const fromText = cityPostalFromText(title);
       const fromUrl = cityPostalFromUrl(url);
@@ -80,6 +95,17 @@ export async function collectSitemapHtml(
   }
 
   return { raws, warnings };
+}
+
+/**
+ * Détecte une page de LOCATION : « loyer », « mensuel » ou un montant suivi de
+ * « €/mois ». On évite un « /mois » nu (présent parfois dans les coûts d'énergie).
+ */
+function isRental(html: string): boolean {
+  const t = html.replace(/<[^>]+>/g, ' ');
+  return /(\bloyer\b|\bmensuel\b|\d[\d\s ]*\s*€\s*(?:cc|hc|charges comprises)?\s*\/\s*mois)/i.test(
+    t
+  );
 }
 
 function msg(e: unknown): string {

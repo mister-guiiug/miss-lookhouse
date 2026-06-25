@@ -44,3 +44,70 @@ export async function collectListingUrls(
   // Dédoublonne en préservant l'ordre.
   return [...new Set(urls)].filter(u => pattern.test(u));
 }
+
+function originOf(url: string): string {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return '';
+  }
+}
+
+function resolveUrl(href: string, base: string): string | null {
+  try {
+    return new URL(href, base).toString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Résout les URLs de pages DÉTAIL d'un sitemap :
+ *  1) directement (descend un sitemapindex) si le sitemap les liste ;
+ *  2) sinon RÉCOLTE les liens détail dans le HTML des pages intermédiaires
+ *     (catégorie/recherche) que le sitemap énumère — `seedPattern` restreint
+ *     les pages à crawler. Pour les sites « needsCrawl » (citya, lamy…).
+ */
+export async function resolveDetailUrls(
+  fetcher: SiteFetch,
+  sitemapUrl: string,
+  pattern: RegExp,
+  opts: {
+    base?: string;
+    maxChildren?: number;
+    maxPages?: number;
+    cap?: number;
+    seedPattern?: RegExp;
+  } = {}
+): Promise<string[]> {
+  const direct = await collectListingUrls(fetcher, sitemapUrl, pattern, {
+    maxChildren: opts.maxChildren ?? 30,
+  });
+  if (direct.length > 0) return direct;
+
+  let locs: string[] = [];
+  try {
+    locs = parseSitemapLocs(await fetcher.text(sitemapUrl));
+  } catch {
+    return [];
+  }
+  const base = opts.base ?? originOf(sitemapUrl);
+  const cap = opts.cap ?? Number.MAX_SAFE_INTEGER;
+  const pages = opts.seedPattern
+    ? locs.filter(u => opts.seedPattern!.test(u))
+    : locs;
+  const seen = new Set<string>();
+  for (const page of pages.slice(0, opts.maxPages ?? 20)) {
+    if (seen.size >= cap) break;
+    try {
+      const html = await fetcher.text(page);
+      for (const m of html.matchAll(/href=["']([^"']+)["']/gi)) {
+        const href = resolveUrl(m[1] ?? '', base);
+        if (href && pattern.test(href)) seen.add(href);
+      }
+    } catch {
+      // page injoignable : on ignore.
+    }
+  }
+  return [...seen];
+}

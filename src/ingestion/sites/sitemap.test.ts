@@ -3,6 +3,7 @@ import {
   collectListingUrls,
   isSitemapIndex,
   parseSitemapLocs,
+  resolveDetailUrls,
 } from './sitemap';
 import type { SiteFetch } from './types';
 
@@ -66,5 +67,61 @@ describe('sitemap', () => {
       /\/vente\/[^/]+\/[^/]+\/[^/]+/
     );
     expect(urls).toHaveLength(2);
+  });
+});
+
+describe('resolveDetailUrls', () => {
+  const detailRe = /\/annonces\/vente\/[a-z]+\/[a-z-]+-[0-9]{5}\/[A-Z0-9]+$/;
+
+  it('utilise les URLs directes du sitemap si elles matchent', async () => {
+    const SM = `<urlset><url><loc>https://ex.fr/annonces/vente/maison/blois-41000/TAPP1</loc></url></urlset>`;
+    const fetcher: SiteFetch = {
+      async text() {
+        return SM;
+      },
+      async json<T>() {
+        return [] as unknown as T;
+      },
+    };
+    const urls = await resolveDetailUrls(
+      fetcher,
+      'https://ex.fr/sm.xml',
+      detailRe
+    );
+    expect(urls).toEqual([
+      'https://ex.fr/annonces/vente/maison/blois-41000/TAPP1',
+    ]);
+  });
+
+  it('récolte les liens détail des pages catégorie (cas needsCrawl)', async () => {
+    // Le sitemap ne liste QUE des pages catégorie → crawl + récolte des détails.
+    const SM = `<urlset>
+      <url><loc>https://ex.fr/annonces/vente/maison</loc></url>
+      <url><loc>https://ex.fr/blog/guide</loc></url>
+    </urlset>`;
+    const CAT = `<a href="/annonces/vente/maison/blois-41000/TAPP1">x</a><a href="/annonces/vente/maison/tours-37000/TAPP2">y</a><a href="/contact">z</a>`;
+    const fetcher: SiteFetch = {
+      async text(url: string) {
+        if (url.endsWith('sm.xml')) return SM;
+        if (url.includes('/annonces/vente/maison')) return CAT;
+        return '';
+      },
+      async json<T>() {
+        return [] as unknown as T;
+      },
+    };
+    const urls = await resolveDetailUrls(
+      fetcher,
+      'https://ex.fr/sm.xml',
+      detailRe,
+      {
+        base: 'https://ex.fr',
+        seedPattern: /\/annonces\/vente\/[a-z]+$/, // ne crawle que la page catégorie, pas le blog
+      }
+    );
+    expect(urls.sort()).toEqual([
+      'https://ex.fr/annonces/vente/maison/blois-41000/TAPP1',
+      'https://ex.fr/annonces/vente/maison/tours-37000/TAPP2',
+    ]);
   });
 });

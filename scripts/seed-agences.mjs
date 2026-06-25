@@ -176,6 +176,37 @@ const SOURCES = [
       maxListings: 50,
     },
   },
+  {
+    id: 'citya',
+    label: 'Citya Immobilier',
+    homepage: 'https://www.citya.com',
+    config: {
+      kind: 'sitemap_html',
+      sitemapUrl: 'https://www.citya.com/sitemap.vente.xml',
+      detailUrlPattern:
+        '/annonces/vente/[^/]+/[a-z0-9-]+-[0-9]{5}/[A-Za-z0-9-]+$',
+      crawlSeedPattern: '/annonces/vente/[^/]+$',
+      baseUrl: 'https://www.citya.com',
+      maxPages: 20,
+      maxListings: 50,
+    },
+  },
+  {
+    id: 'lamy',
+    label: 'Lamy Immobilier',
+    homepage: 'https://www.lamy-immobilier.fr',
+    config: {
+      kind: 'sitemap_network',
+      sitemapUrl: 'https://www.lamy-immobilier.fr/sitemap.xml',
+      detailUrlPattern:
+        '/annonces-de-biens-a-vendre/.+-[0-9]{5}-[a-z]{2}[0-9]+$',
+      crawlSeedPattern:
+        '/annonces-de-biens-a-vendre/[^/]+/[^/]+/[a-z0-9-]+-[0-9]{5}$',
+      baseUrl: 'https://www.lamy-immobilier.fr',
+      maxPages: 20,
+      maxListings: 50,
+    },
+  },
 ];
 
 async function ensureSystemUser() {
