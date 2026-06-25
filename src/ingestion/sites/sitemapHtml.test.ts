@@ -55,4 +55,40 @@ describe('collectSitemapHtml', () => {
     expect(terrain.city).toBe('Saint-Aubin-les-Forges');
     expect(terrain.price).toBe(23000);
   });
+
+  it('saleOnly exclut les locations (sitemap mêlant vente+location, cas okey)', async () => {
+    const SITEMAP = `<urlset>
+      <url><loc>https://ex.fr/fiches/_1/maison-lempdes.html</loc></url>
+      <url><loc>https://ex.fr/fiches/_2/maison-aurillac.html</loc></url>
+    </urlset>`;
+    const PAGES: Record<string, string> = {
+      'https://ex.fr/fiches/_1/maison-lempdes.html':
+        '<title>Maison Lempdes 8 pièces 166 m2</title><body>Prix 318 000 €</body>',
+      'https://ex.fr/fiches/_2/maison-aurillac.html':
+        '<title>Maison Aurillac 4 pièces 90 m2</title><body>Loyer 950 €/mois charges comprises</body>',
+    };
+    const fetcher: SiteFetch = {
+      async text(url: string) {
+        if (url.endsWith('sitemap.xml')) return SITEMAP;
+        return PAGES[url] ?? '';
+      },
+      async json<T>() {
+        return [] as unknown as T;
+      },
+    };
+    const { raws } = await collectSitemapHtml(
+      {
+        sitemapUrl: 'https://ex.fr/sitemap.xml',
+        detailUrlPattern: '/fiches/[^/]+/[^/]+\\.html$',
+        saleOnly: true,
+      },
+      { fetcher }
+    );
+    expect(raws).toHaveLength(1); // la location (Aurillac, /mois) est exclue
+    const { listings } = parseListings(
+      raws.map(r => ({ ...r, sourceId: 'okey' }))
+    );
+    expect(listings[0]!.price).toBe(318000);
+    expect(listings[0]!.rooms).toBe(8);
+  });
 });

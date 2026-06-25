@@ -21,7 +21,7 @@ import {
   extractSurfaceM2,
   listingKeyFromUrl,
 } from './extract.ts';
-import { collectListingUrls } from './sitemap.ts';
+import { resolveDetailUrls } from './sitemap.ts';
 import type { SiteCollectContext, SiteCollectResult } from './types.ts';
 
 export interface SitemapNetworkConfig {
@@ -29,6 +29,12 @@ export interface SitemapNetworkConfig {
   sitemapUrl?: string;
   sitemapUrls?: string[];
   detailUrlPattern: string;
+  /** Si le sitemap liste des pages catégorie : regex des pages à crawler. */
+  crawlSeedPattern?: string;
+  /** Base pour résoudre les hrefs relatifs récoltés. */
+  baseUrl?: string;
+  /** Plafond de pages intermédiaires à crawler. */
+  maxPages?: number;
   maxListings?: number;
 }
 
@@ -50,12 +56,18 @@ export async function collectSitemapNetwork(
     ctx.limit ?? Number.MAX_SAFE_INTEGER
   );
 
+  const seedPattern = cfg.crawlSeedPattern
+    ? new RegExp(cfg.crawlSeedPattern)
+    : undefined;
   const seen = new Set<string>();
   for (const sm of sitemaps) {
     if (seen.size >= cap * 3) break;
     try {
-      for (const u of await collectListingUrls(ctx.fetcher, sm, detailRe, {
-        maxChildren: 30,
+      for (const u of await resolveDetailUrls(ctx.fetcher, sm, detailRe, {
+        base: cfg.baseUrl,
+        maxPages: cfg.maxPages,
+        cap: cap * 3,
+        seedPattern,
       })) {
         seen.add(u);
       }

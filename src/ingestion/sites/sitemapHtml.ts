@@ -1,11 +1,11 @@
 /**
  * Connecteur générique « sitemap plat → pages HTML » pour les CMS sans données
- * structurées (La Boite Immo, Netty…). Énumère les pages détail via le sitemap,
- * puis extrait les champs depuis le `<title>` (souvent dense, ex. « Vente maison
+ * structurées (La Boite Immo, Netty…). Énumère les pages détail via le sitemap
+ * (ou récolte les liens sur des pages catégorie si `crawlSeedPattern`), puis
+ * extrait les champs depuis le `<title>` (souvent dense, ex. « Vente maison
  * Bertignat 4 pièces 140m² 140000€ ») avec repli sur le corps HTML.
  *
- * Paramétré par `config` : `sitemapUrl` + `detailUrlPattern` (regex) → réutilisable
- * pour plusieurs agences sans nouveau code.
+ * Paramétré par `config` → réutilisable pour plusieurs agences sans nouveau code.
  */
 import {
   cityFromVenteTitle,
@@ -17,13 +17,21 @@ import {
   extractTitleTag,
   listingKeyFromUrl,
 } from './extract';
-import { collectListingUrls } from './sitemap';
+import { resolveDetailUrls } from './sitemap';
 import type { SiteCollectContext, SiteCollectResult } from './types';
 
 export interface SitemapHtmlConfig {
   sitemapUrl: string;
   /** Regex (source) identifiant les URLs de pages DÉTAIL (vs index/catégories). */
   detailUrlPattern: string;
+  /** Si le sitemap liste des pages catégorie : regex des pages à crawler. */
+  crawlSeedPattern?: string;
+  /** Base pour résoudre les hrefs relatifs récoltés. */
+  baseUrl?: string;
+  /** Plafond de pages intermédiaires à crawler. */
+  maxPages?: number;
+  /** Exclure les annonces de LOCATION (sitemaps mêlant vente+location, ex. okey). */
+  saleOnly?: boolean;
   maxListings?: number;
 }
 
@@ -39,23 +47,30 @@ export async function collectSitemapHtml(
     return { raws: [], warnings: [`detailUrlPattern invalide : ${msg(e)}`] };
   }
 
+  const cap = Math.min(
+    cfg.maxListings ?? 200,
+    ctx.limit ?? Number.MAX_SAFE_INTEGER
+  );
+
   let urls: string[];
   try {
-    urls = await collectListingUrls(ctx.fetcher, cfg.sitemapUrl, pattern, {
-      maxChildren: 30,
+    urls = await resolveDetailUrls(ctx.fetcher, cfg.sitemapUrl, pattern, {
+      base: cfg.baseUrl,
+      maxPages: cfg.maxPages,
+      cap: cap * 3,
+      seedPattern: cfg.crawlSeedPattern
+        ? new RegExp(cfg.crawlSeedPattern)
+        : undefined,
     });
   } catch (e) {
     return { raws: [], warnings: [`sitemap ${cfg.sitemapUrl} : ${msg(e)}`] };
   }
 
-  const cap = Math.min(
-    cfg.maxListings ?? 200,
-    ctx.limit ?? Number.MAX_SAFE_INTEGER
-  );
   const raws: Array<Record<string, unknown>> = [];
   for (const url of urls.slice(0, cap)) {
     try {
       const html = await ctx.fetcher.text(url);
+      if (cfg.saleOnly && isRental(html)) continue; // exclut les locations
       const title = extractTitleTag(html);
       const fromText = cityPostalFromText(title);
       const fromUrl = cityPostalFromUrl(url);
@@ -77,6 +92,17 @@ export async function collectSitemapHtml(
   }
 
   return { raws, warnings };
+}
+
+/**
+ * Détecte une page de LOCATION : « loyer », « mensuel » ou un montant suivi de
+ * « €/mois ». `\s` couvre déjà les espaces insécables (pas de caractère littéral).
+ */
+function isRental(html: string): boolean {
+  const t = html.replace(/<[^>]+>/g, ' ');
+  return /(\bloyer\b|\bmensuel\b|\d[\d\s]*€\s*(?:cc|hc|charges comprises)?\s*\/\s*mois)/i.test(
+    t
+  );
 }
 
 function msg(e: unknown): string {
