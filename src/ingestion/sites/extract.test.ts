@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   cityPostalFromText,
+  deptOf,
   extractPriceEur,
   extractSurfaceM2,
+  inDepartments,
   isForSaleStatus,
   splitLocation,
 } from './extract';
@@ -57,5 +59,23 @@ describe('extracteurs de site', () => {
       city: null,
       postalCode: null,
     });
+  });
+
+  it('deptOf / inDepartments (périmètre par département)', () => {
+    expect(deptOf('63000')).toBe('63');
+    expect(
+      deptOf('https://x.fr/annonces/achat/maison/margency-95580/1552306')
+    ).toBe('95');
+    expect(deptOf('https://x.fr/annonces/168309')).toBeNull(); // 6 chiffres, pas un CP
+    // full (pas de filtre)
+    expect(inDepartments('75001', undefined)).toBe(true);
+    expect(inDepartments('75001', [])).toBe(true);
+    // dans / hors périmètre
+    expect(inDepartments('.../clermont-ferrand-63000,VA1', ['63', '03'])).toBe(
+      true
+    );
+    expect(inDepartments('75001', ['63', '03'])).toBe(false);
+    // pas de CP détecté → ne filtre pas (le post-filtre par CP tranche)
+    expect(inDepartments('/annonce/sans-cp/r2052305', ['63'])).toBe(true);
   });
 });

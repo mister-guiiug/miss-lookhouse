@@ -7,6 +7,7 @@
  * parsing ; le réseau passe par le `SiteFetch` injecté.
  */
 import type { SiteFetch } from './types.ts';
+import { inDepartments } from './extract.ts';
 
 /** Extrait les `<loc>` d'un document sitemap. */
 export function parseSitemapLocs(xml: string): string[] {
@@ -81,12 +82,20 @@ export async function resolveDetailUrls(
     maxPages?: number;
     cap?: number;
     seedPattern?: RegExp;
+    departments?: string[];
   } = {}
 ): Promise<string[]> {
+  // Pré-filtre « périmètre » : ne garde que les URLs dont le CP (souvent présent
+  // dans l'URL : safti/citya/netty/lamy) appartient aux départements demandés.
+  const byDept = (urls: string[]) =>
+    opts.departments?.length
+      ? urls.filter(u => inDepartments(u, opts.departments))
+      : urls;
+
   const direct = await collectListingUrls(fetcher, sitemapUrl, pattern, {
     maxChildren: opts.maxChildren ?? 30,
   });
-  if (direct.length > 0) return direct;
+  if (direct.length > 0) return byDept(direct);
 
   let locs: string[] = [];
   try {
@@ -112,5 +121,5 @@ export async function resolveDetailUrls(
       // page injoignable : on ignore.
     }
   }
-  return [...seen];
+  return byDept([...seen]);
 }

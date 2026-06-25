@@ -4,6 +4,11 @@ import { formatDate, timeAgo } from '../../lib/format';
 import { IS_SUPABASE } from '../../backend/config';
 import { fetchIngestionRuns } from '../../backend/ingestionRuns';
 import { triggerIngestNow } from '../../backend/ingest';
+import {
+  listSharedConnectors,
+  updateSharedConnector,
+  type SharedConnector,
+} from '../../backend/connectorsAdmin';
 import { aggregateRuns } from '../../lib/runStats';
 import type { IngestionRun } from '../../store/types';
 
@@ -46,6 +51,8 @@ export function ProcessingScreen() {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [connectors, setConnectors] = useState<SharedConnector[]>([]);
+  const [savingCfg, setSavingCfg] = useState(false);
 
   const loadRuns = useCallback(() => {
     if (!IS_SUPABASE) return;
@@ -55,8 +62,35 @@ export function ProcessingScreen() {
   }, []);
 
   useEffect(() => {
+    if (!IS_SUPABASE) return;
     loadRuns();
+    listSharedConnectors()
+      .then(setConnectors)
+      .catch(e => setErr(e instanceof Error ? e.message : String(e)));
   }, [loadRuns]);
+
+  function setConn(id: string, patch: Partial<SharedConnector>) {
+    setConnectors(cs => cs.map(c => (c.id === id ? { ...c, ...patch } : c)));
+  }
+
+  async function saveConnectors() {
+    setSavingCfg(true);
+    setErr(null);
+    setMsg(null);
+    try {
+      for (const c of connectors) {
+        await updateSharedConnector(c.id, {
+          enabled: c.enabled,
+          departments: c.departments,
+        });
+      }
+      setMsg('Connecteurs enregistrés.');
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSavingCfg(false);
+    }
+  }
 
   async function refreshCatalog() {
     setBusy(true);
@@ -91,22 +125,77 @@ export function ProcessingScreen() {
       </p>
 
       {IS_SUPABASE && (
-        <div
-          className="row"
-          style={{
-            gap: '0.6rem',
-            alignItems: 'center',
-            margin: '0.2rem 0 0.8rem',
-          }}
-        >
-          <button className="btn" onClick={refreshCatalog} disabled={busy}>
-            {busy ? 'Collecte en cours…' : 'Actualiser le catalogue'}
-          </button>
-          {msg && (
-            <span className="muted" style={{ fontSize: '0.82rem' }}>
-              {msg}
-            </span>
+        <div className="card">
+          <div className="h-title">Connecteurs du catalogue partagé</div>
+          <p className="muted" style={{ fontSize: '0.82rem' }}>
+            Activez les sources et limitez leur périmètre par département (ex. «
+            63,03 » ; vide = national). La collecte alimente le catalogue
+            commun, visible par tous.
+          </p>
+          {connectors.length === 0 ? (
+            <div className="muted" style={{ fontSize: '0.82rem' }}>
+              Aucun connecteur partagé (lancez le seed « Agences 63 »).
+            </div>
+          ) : (
+            connectors.map(c => (
+              <div
+                key={c.id}
+                className="row spread"
+                style={{ gap: '0.6rem', margin: '0.3rem 0', flexWrap: 'wrap' }}
+              >
+                <label
+                  className="row"
+                  style={{ gap: '0.4rem', alignItems: 'center' }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={c.enabled}
+                    onChange={e => setConn(c.id, { enabled: e.target.checked })}
+                  />
+                  <span>
+                    {c.label}{' '}
+                    <span className="muted" style={{ fontSize: '0.74rem' }}>
+                      ({c.kind})
+                    </span>
+                  </span>
+                </label>
+                <input
+                  className="input"
+                  placeholder="Départements (vide = national)"
+                  value={c.departments.join(',')}
+                  onChange={e =>
+                    setConn(c.id, {
+                      departments: e.target.value
+                        .split(',')
+                        .map(s => s.trim())
+                        .filter(Boolean),
+                    })
+                  }
+                  style={{ maxWidth: 220 }}
+                />
+              </div>
+            ))
           )}
+          <div
+            className="row"
+            style={{ gap: '0.6rem', alignItems: 'center', marginTop: '0.6rem' }}
+          >
+            <button
+              className="btn"
+              onClick={saveConnectors}
+              disabled={savingCfg || connectors.length === 0}
+            >
+              {savingCfg ? 'Enregistrement…' : 'Enregistrer les connecteurs'}
+            </button>
+            <button className="btn" onClick={refreshCatalog} disabled={busy}>
+              {busy ? 'Collecte en cours…' : 'Actualiser le catalogue'}
+            </button>
+            {msg && (
+              <span className="muted" style={{ fontSize: '0.82rem' }}>
+                {msg}
+              </span>
+            )}
+          </div>
         </div>
       )}
 

@@ -234,3 +234,25 @@ export function cityPostalFromText(text: string | null): {
   if (m?.[1] && m[2]) return { city: cleanCity(m[1]), postalCode: m[2] };
   return { city: null, postalCode: null };
 }
+
+/** Code département (2 car.) d'un code postal ou de la 1ʳᵉ séquence de 5 chiffres d'un texte/URL. */
+export function deptOf(postalOrText: string | null): string | null {
+  if (!postalOrText) return null;
+  const m = /(?<!\d)(\d{5})(?!\d)/.exec(postalOrText);
+  return m?.[1] ? m[1].slice(0, 2) : null;
+}
+
+/**
+ * Filtre « périmètre » : l'élément (CP, ou texte/URL contenant un CP) appartient-il
+ * aux départements demandés ? `departments` vide/absent = aucun filtre (full).
+ * Si aucun CP n'est détecté, on NE filtre PAS ici (le post-filtre par CP exact tranche).
+ */
+export function inDepartments(
+  postalOrText: string | null,
+  departments: string[] | undefined
+): boolean {
+  if (!departments || departments.length === 0) return true;
+  const d = deptOf(postalOrText);
+  if (d == null) return true;
+  return departments.includes(d);
+}

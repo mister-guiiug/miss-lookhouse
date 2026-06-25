@@ -13,7 +13,7 @@
  * Renvoie des objets bruts ; `parseListings` normalise. Réutilise le helper
  * sitemap et les extracteurs prix/surface.
  */
-import { extractPriceEur, extractSurfaceM2 } from './extract.ts';
+import { extractPriceEur, extractSurfaceM2, inDepartments } from './extract.ts';
 import { collectListingUrls } from './sitemap.ts';
 import type { SiteCollectContext, SiteCollectResult } from './types.ts';
 
@@ -100,6 +100,9 @@ export async function collectNetty(
     });
   } catch (e) {
     return { raws: [], warnings: [`sitemap ${cfg.sitemapUrl} : ${msg(e)}`] };
+  }
+  if (ctx.departments?.length) {
+    urls = urls.filter(u => inDepartments(u, ctx.departments));
   }
 
   const cap = Math.min(

@@ -61,6 +61,7 @@ export async function collectSitemapHtml(
       base: cfg.baseUrl,
       maxPages: cfg.maxPages,
       cap: cap * 3,
+      departments: ctx.departments,
       seedPattern: cfg.crawlSeedPattern
         ? new RegExp(cfg.crawlSeedPattern)
         : undefined,
