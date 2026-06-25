@@ -165,6 +165,17 @@ const SOURCES = [
       maxListings: 50,
     },
   },
+  {
+    id: 'iadfrance',
+    label: 'IAD France',
+    homepage: 'https://www.iadfrance.fr',
+    config: {
+      kind: 'jsonld_sitemap',
+      sitemapUrl: 'https://www.iadfrance.fr/sitemap/fr/ads.xml',
+      detailUrlPattern: '/annonce/[a-z0-9-]+/r[0-9]+$',
+      maxListings: 50,
+    },
+  },
 ];
 
 async function ensureSystemUser() {
