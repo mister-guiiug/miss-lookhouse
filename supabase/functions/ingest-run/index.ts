@@ -198,11 +198,22 @@ async function runSearch(supabase: Supa, search: DueSearch) {
 const COLLECTOR_UA =
   'miss-lookhouse-collector/1.0 (+https://github.com/mister-guiiug/miss-lookhouse; collecte responsable)';
 
-/** Fetch injecté aux connecteurs de site : anti-SSRF + timeout sur CHAQUE URL. */
+// Débit conservateur : au moins ~300 ms entre deux requêtes sortantes (collecte
+// responsable, évite de marteler les petits sites d'agence).
+const MIN_FETCH_GAP_MS = 300;
+let lastFetchAt = 0;
+async function throttle(): Promise<void> {
+  const wait = lastFetchAt + MIN_FETCH_GAP_MS - Date.now();
+  if (wait > 0) await new Promise(r => setTimeout(r, wait));
+  lastFetchAt = Date.now();
+}
+
+/** Fetch injecté aux connecteurs de site : anti-SSRF + timeout + débit poli. */
 function siteFetch(): SiteFetch {
   return {
     async text(u: string): Promise<string> {
       await assertPublicHttpsUrl(u);
+      await throttle();
       const r = await fetchWithTimeout(
         u,
         { headers: { 'user-agent': COLLECTOR_UA } },
@@ -213,6 +224,7 @@ function siteFetch(): SiteFetch {
     },
     async json<T>(u: string): Promise<T> {
       await assertPublicHttpsUrl(u);
+      await throttle();
       const r = await fetchWithTimeout(
         u,
         { headers: { accept: 'application/json', 'user-agent': COLLECTOR_UA } },

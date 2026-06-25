@@ -56,7 +56,10 @@ const PROPERTY_TYPE_MAP: ReadonlyArray<readonly [RegExp, string]> = [
     /\b(appartement|appart|appt|studio|t[1-9]|f[1-9]|duplex|loft)s?\b/,
     'appartement',
   ],
-  [/\b(maison|villa|pavillon|longere|mas|chalet)s?\b/, 'maison'],
+  [
+    /\b(maison|villa|pavillon|longere|mas|chalet|propriete|fermette|grange|corps de ferme)s?\b/,
+    'maison',
+  ],
   [/\b(terrain|parcelle|foncier)s?\b/, 'terrain'],
   [/\b(parking|garage|box)s?\b/, 'parking'],
   [/\b(immeuble)s?\b/, 'immeuble'],

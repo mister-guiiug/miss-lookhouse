@@ -46,6 +46,39 @@ const SOURCES = [
       maxListings: 60,
     },
   },
+  {
+    id: 'immobiliernova',
+    label: 'Immo Nova',
+    homepage: 'https://www.immobiliernova.com',
+    config: {
+      kind: 'sitemap_html',
+      sitemapUrl: 'https://www.immobiliernova.com/sitemap.xml',
+      detailUrlPattern: '/vente/[^/]+/[^/]+/[^/]+',
+      maxListings: 60,
+    },
+  },
+  {
+    id: 'vosagents',
+    label: 'Vos Agents',
+    homepage: 'https://vosagents.fr',
+    config: {
+      kind: 'sitemap_html',
+      sitemapUrl: 'https://vosagents.fr/sitemap.xml',
+      detailUrlPattern: '/vente/[^/]+/[^/]+/[^/]+',
+      maxListings: 60,
+    },
+  },
+  {
+    id: 'gti',
+    label: 'GTI Immobilier',
+    homepage: 'https://gti-immobilier.fr',
+    config: {
+      kind: 'sitemap_html',
+      sitemapUrl: 'https://gti-immobilier.fr/sitemap.xml',
+      detailUrlPattern: '/vente/[^/]+/[^/]+/[^/]+',
+      maxListings: 60,
+    },
+  },
 ];
 
 async function ensureSystemUser() {

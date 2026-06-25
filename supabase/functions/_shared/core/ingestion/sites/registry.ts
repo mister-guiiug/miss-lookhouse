@@ -10,6 +10,7 @@ import {
   collectWordPressRest,
   type WordPressRestConfig,
 } from './wordpressRest.ts';
+import { collectSitemapHtml, type SitemapHtmlConfig } from './sitemapHtml.ts';
 
 export async function collectSite(
   kind: string,
@@ -19,6 +20,8 @@ export async function collectSite(
   switch (kind) {
     case 'wordpress_rest':
       return collectWordPressRest(cfg as unknown as WordPressRestConfig, ctx);
+    case 'sitemap_html':
+      return collectSitemapHtml(cfg as unknown as SitemapHtmlConfig, ctx);
     default:
       return {
         raws: [],
