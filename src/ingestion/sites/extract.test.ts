@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  cityPostalFromText,
   extractPriceEur,
   extractSurfaceM2,
   isForSaleStatus,
@@ -37,5 +38,24 @@ describe('extracteurs de site', () => {
     expect(isForSaleStatus('A vendre')).toBe(true);
     expect(isForSaleStatus('Sous offre')).toBe(true);
     expect(isForSaleStatus('Vendu')).toBe(false);
+  });
+
+  it('cityPostalFromText : ville + CP, sans faux positif sur un prix', () => {
+    // titre ERA : ville + CP en fin de titre (verbe « acheter » écarté)
+    expect(
+      cityPostalFromText(
+        'Terrain 0 pièces 444 m² à vendre / acheter avensan 33480'
+      )
+    ).toEqual({ city: 'Avensan', postalCode: '33480' });
+    // ville multi-mots conservée
+    expect(cityPostalFromText('Maison Clermont Ferrand 63000')).toEqual({
+      city: 'Clermont Ferrand',
+      postalCode: '63000',
+    });
+    // un prix « 23 000 € » (5 chiffres mais précédé de chiffres/€) ne piège pas
+    expect(cityPostalFromText('Maison 0m² 23000 €')).toEqual({
+      city: null,
+      postalCode: null,
+    });
   });
 });

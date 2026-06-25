@@ -129,6 +129,42 @@ const SOURCES = [
       maxListings: 50,
     },
   },
+  {
+    id: 'eraimmobilier',
+    label: 'ERA Immobilier',
+    homepage: 'https://www.eraimmobilier.com',
+    config: {
+      kind: 'sitemap_html',
+      sitemapUrl:
+        'https://www.eraimmobilier.com/sitemap/sitemap_silo_achat_biens.xml',
+      detailUrlPattern: '/annonces/[0-9]+$',
+      maxListings: 50,
+    },
+  },
+  {
+    id: 'century21cournon',
+    label: 'Century 21 Gervillie (Cournon)',
+    homepage: 'https://www.century21-gi-cournon.com',
+    config: {
+      kind: 'sitemap_html',
+      sitemapUrl:
+        'https://www.century21-gi-cournon.com/sitemap-vente_detail.xml',
+      detailUrlPattern: '/trouver_logement/detail/[0-9]+/?$',
+      maxListings: 50,
+    },
+  },
+  {
+    id: 'laforet',
+    label: 'Laforêt',
+    homepage: 'https://www.laforet.com',
+    config: {
+      kind: 'sitemap_network',
+      sitemapUrl: 'https://www.laforet.com/storage/sitemaps/produits.xml',
+      detailUrlPattern:
+        '/agence-immobiliere/[^/]+/acheter/[^/]+/[a-z0-9-]+-[0-9]+$',
+      maxListings: 50,
+    },
+  },
 ];
 
 async function ensureSystemUser() {
