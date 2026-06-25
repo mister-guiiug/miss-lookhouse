@@ -20,6 +20,7 @@ import { applyFieldMap, pickItems } from './core/ingestion/fieldMap.ts';
 import type { CanonicalListing, SearchCriteria } from './core/domain/types.ts';
 import { collectSite } from './core/ingestion/sites/registry.ts';
 import type { SiteFetch } from './core/ingestion/sites/types.ts';
+import { inDepartments } from './core/ingestion/sites/extract.ts';
 
 export type Supa = ReturnType<typeof adminClient>;
 const nowIso = () => new Date().toISOString();
@@ -210,12 +211,22 @@ async function fetchConnector(connector: {
   const kind = typeof cfg.kind === 'string' ? cfg.kind : 'json_api';
 
   if (kind !== 'json_api') {
+    const departments = Array.isArray(cfg.departments)
+      ? (cfg.departments as unknown[]).map(String)
+      : undefined;
     const { raws, warnings } = await collectSite(kind, cfg, {
       fetcher: siteFetch(),
       limit: cfg.maxListings != null ? Number(cfg.maxListings) : 200,
+      departments,
     });
+    // Post-filtre périmètre par CP (filet pour les connecteurs sans CP dans l'URL).
+    const scoped = departments?.length
+      ? raws.filter(r =>
+          inDepartments((r.postalCode as string | null) ?? null, departments)
+        )
+      : raws;
     const { listings, errors } = parseListings(
-      raws.map(r => ({ ...r, sourceId: connector.source_id }))
+      scoped.map(r => ({ ...r, sourceId: connector.source_id }))
     );
     return { listings, errors: [...errors, ...warnings] };
   }

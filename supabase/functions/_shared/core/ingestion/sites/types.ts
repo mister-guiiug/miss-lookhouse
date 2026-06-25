@@ -18,6 +18,8 @@ export interface SiteCollectContext {
   fetcher: SiteFetch;
   /** Plafond d'annonces (borne le nombre de fetch « détail » côté Edge). */
   limit?: number;
+  /** Périmètre : départements (ex. ['63','03']) ; vide/absent = national (full). */
+  departments?: string[];
 }
 
 export interface SiteCollectResult {

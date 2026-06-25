@@ -65,6 +65,7 @@ export async function collectSitemapNetwork(
         maxPages: cfg.maxPages,
         cap: cap * 3,
         seedPattern,
+        departments: ctx.departments,
       })) {
         seen.add(u);
       }

@@ -124,4 +124,30 @@ describe('resolveDetailUrls', () => {
       'https://ex.fr/annonces/vente/maison/tours-37000/TAPP2',
     ]);
   });
+
+  it('filtre par département (périmètre) sur les URLs directes', async () => {
+    const SM = `<urlset>
+      <url><loc>https://ex.fr/annonces/vente/maison/blois-41000/TAPP1</loc></url>
+      <url><loc>https://ex.fr/annonces/vente/maison/clermont-63000/TAPP2</loc></url>
+    </urlset>`;
+    const fetcher: SiteFetch = {
+      async text() {
+        return SM;
+      },
+      async json<T>() {
+        return [] as unknown as T;
+      },
+    };
+    const urls = await resolveDetailUrls(
+      fetcher,
+      'https://ex.fr/sm.xml',
+      detailRe,
+      {
+        departments: ['63'],
+      }
+    );
+    expect(urls).toEqual([
+      'https://ex.fr/annonces/vente/maison/clermont-63000/TAPP2',
+    ]);
+  });
 });
