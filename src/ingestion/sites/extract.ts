@@ -144,3 +144,90 @@ export function cityPostalFromUrl(url: string | null): {
   }
   return { city: null, postalCode: null };
 }
+
+// Jetons à écarter d'une ville extraite d'un texte (verbes/prépositions/unités).
+const CITY_STOP = new Set([
+  'a',
+  'à',
+  'de',
+  'du',
+  'des',
+  'la',
+  'le',
+  'les',
+  'et',
+  'en',
+  'au',
+  'aux',
+  'sur',
+  'vente',
+  'vendre',
+  'achat',
+  'acheter',
+  'location',
+  'louer',
+  'prix',
+  'piece',
+  'pieces',
+  'pièce',
+  'pièces',
+  'm',
+  'm2',
+  'm²',
+  // types de bien (souvent en tête de titre, à ne pas confondre avec la ville)
+  'maison',
+  'maisons',
+  'appartement',
+  'appartements',
+  'appart',
+  'studio',
+  'terrain',
+  'terrains',
+  'villa',
+  'immeuble',
+  'local',
+  'parking',
+  'garage',
+  'box',
+  'duplex',
+  'loft',
+  'propriete',
+  'fermette',
+  'grange',
+  'chalet',
+  'mas',
+  'pavillon',
+  'longere',
+  'bureau',
+  'commerce',
+]);
+
+function cleanCity(raw: string): string | null {
+  const toks = raw
+    .split(/\s+/)
+    .map(t => t.trim())
+    .filter(t => t && !/^\d+$/.test(t) && !CITY_STOP.has(t.toLowerCase()));
+  if (!toks.length) return null;
+  return toks
+    .map(t =>
+      t.length <= 3 && t === t.toUpperCase()
+        ? t
+        : t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()
+    )
+    .join(' ');
+}
+
+/**
+ * Ville + code postal depuis un TEXTE « … {Ville} {63500} … » (titre/og:title de
+ * type « … à vendre / acheter avensan 33480 »). Ne se déclenche que si un code à
+ * 5 chiffres suit des lettres → pas de faux positif sur un prix « 23 000 € ».
+ */
+export function cityPostalFromText(text: string | null): {
+  city: string | null;
+  postalCode: string | null;
+} {
+  if (!text) return { city: null, postalCode: null };
+  const m = /([\p{L}][\p{L}\s'’-]*?)\s+(\d{5})(?!\d)/u.exec(text);
+  if (m?.[1] && m[2]) return { city: cleanCity(m[1]), postalCode: m[2] };
+  return { city: null, postalCode: null };
+}

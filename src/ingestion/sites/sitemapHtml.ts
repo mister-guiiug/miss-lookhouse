@@ -9,6 +9,8 @@
  */
 import {
   cityFromVenteTitle,
+  cityPostalFromText,
+  cityPostalFromUrl,
   extractPriceEur,
   extractRooms,
   extractSurfaceM2,
@@ -55,6 +57,8 @@ export async function collectSitemapHtml(
     try {
       const html = await ctx.fetcher.text(url);
       const title = extractTitleTag(html);
+      const fromText = cityPostalFromText(title);
+      const fromUrl = cityPostalFromUrl(url);
       raws.push({
         id: listingKeyFromUrl(url),
         url,
@@ -64,7 +68,8 @@ export async function collectSitemapHtml(
         price: extractPriceEur(title ?? '') ?? extractPriceEur(html),
         surface: extractSurfaceM2(title ?? '') ?? extractSurfaceM2(html),
         rooms: extractRooms(title ?? '') ?? extractRooms(html),
-        city: cityFromVenteTitle(title),
+        city: cityFromVenteTitle(title) ?? fromText.city ?? fromUrl.city,
+        postalCode: fromText.postalCode ?? fromUrl.postalCode,
       });
     } catch (e) {
       warnings.push(`détail ${url} : ${msg(e)}`);

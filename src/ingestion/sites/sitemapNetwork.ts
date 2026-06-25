@@ -10,6 +10,7 @@
  * IGNORÉE — évite d'injecter des annonces vides.
  */
 import {
+  cityPostalFromText,
   cityPostalFromUrl,
   extractMeta,
   extractPriceEur,
@@ -79,7 +80,8 @@ export async function collectSitemapNetwork(
         continue;
       }
 
-      const { city, postalCode } = cityPostalFromUrl(url);
+      const fromUrl = cityPostalFromUrl(url);
+      const fromText = cityPostalFromText(ogTitle);
       raws.push({
         id: listingKeyFromUrl(url),
         url,
@@ -88,8 +90,8 @@ export async function collectSitemapNetwork(
         rooms,
         price,
         surface,
-        city,
-        postalCode,
+        city: fromUrl.city ?? fromText.city,
+        postalCode: fromUrl.postalCode ?? fromText.postalCode,
       });
     } catch (e) {
       warnings.push(`détail ${url} : ${msg(e)}`);
