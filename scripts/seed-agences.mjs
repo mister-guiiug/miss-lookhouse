@@ -101,6 +101,19 @@ const SOURCES = [
       maxListings: 60,
     },
   },
+  {
+    id: 'squarehabitat',
+    label: 'Square Habitat',
+    homepage: 'https://www.squarehabitat.fr',
+    config: {
+      kind: 'jsonld_sitemap',
+      sitemapUrl: 'https://www.squarehabitat.fr/sitemap-achat.xml',
+      detailUrlPattern: '/annonces/biens/',
+      baseUrl: 'https://www.squarehabitat.fr',
+      maxPages: 20,
+      maxListings: 60,
+    },
+  },
 ];
 
 async function ensureSystemUser() {
