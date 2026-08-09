@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import '@mister-guiiug/dev-wpa-config/tailwind-preset.css';
 
 /* ── Jetons de thème (clair par défaut, sombre via [data-theme="dark"]) ── */
 :root {
