@@ -1,47 +1,48 @@
-import { NavLink } from 'react-router-dom';
+import type { ComponentType } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { Home, Search, List, CopyCheck, Bell } from 'lucide-react';
+import { BottomNav as DwcBottomNav } from '@mister-guiiug/dev-wpa-config/react/bottom-nav';
 import { useAppStore } from '../store/useAppStore';
 
 const items = [
-  { to: '/', label: 'Accueil', Icon: Home, end: true },
-  { to: '/recherches', label: 'Recherches', Icon: Search, end: false },
-  { to: '/annonces', label: 'Annonces', Icon: List, end: false },
-  { to: '/similaires', label: 'Doublons', Icon: CopyCheck, end: false },
-  { to: '/notifications', label: 'Alertes', Icon: Bell, end: false },
+  { href: '/', label: 'Accueil', Icon: Home, end: true },
+  { href: '/recherches', label: 'Recherches', Icon: Search, end: false },
+  { href: '/annonces', label: 'Annonces', Icon: List, end: false },
+  { href: '/similaires', label: 'Doublons', Icon: CopyCheck, end: false },
+  { href: '/notifications', label: 'Alertes', Icon: Bell, end: false },
 ];
 
+/**
+ * Barre de navigation basse, déléguée au socle (`react/bottom-nav`) : nom du
+ * repère, `aria-current`, trait actif et pastille lue (« n non lues ») viennent
+ * de là. `currentPath` est indispensable : sous HashRouter, le
+ * `location.pathname` global (défaut du socle) ne voit pas la route.
+ */
 export function BottomNav() {
   const notifications = useAppStore(s => s.data.notifications);
   const unread = notifications.filter(n => !n.readAt).length;
+  const { pathname } = useLocation();
 
   return (
-    <nav className="bottom-nav" aria-label="Navigation principale">
-      {items.map(({ to, label, Icon, end }) => (
-        <NavLink key={to} to={to} end={end}>
-          <span style={{ position: 'relative' }}>
-            <Icon size={20} aria-hidden />
-            {to === '/notifications' && unread > 0 && (
-              <span
-                aria-label={`${unread} non lues`}
-                style={{
-                  position: 'absolute',
-                  top: -4,
-                  right: -8,
-                  background: 'var(--danger)',
-                  color: '#fff',
-                  borderRadius: 999,
-                  fontSize: 9,
-                  padding: '0 4px',
-                  fontWeight: 700,
-                }}
-              >
-                {unread}
-              </span>
-            )}
-          </span>
-          {label}
-        </NavLink>
-      ))}
-    </nav>
+    <DwcBottomNav
+      currentPath={pathname}
+      items={items.map(({ href, label, Icon, end }) => ({
+        href,
+        label,
+        end,
+        icon: <Icon size={20} aria-hidden="true" />,
+        ...(href === '/notifications' && unread > 0
+          ? { badge: unread, badgeLabel: `${unread} non lues` }
+          : {}),
+      }))}
+      // `linkComponent` est typé `ComponentType<Record<string, unknown>>`, qui
+      // refuse un composant à prop obligatoire — donc `NavLink` et son `to`,
+      // alors que c'est l'usage documenté du socle. La conversion est sûre :
+      // `hrefProp` fournit précisément `to`. Même motif que miss-genius.
+      linkComponent={
+        NavLink as unknown as ComponentType<Record<string, unknown>>
+      }
+      hrefProp="to"
+    />
   );
 }
