@@ -1,27 +1,37 @@
 /**
- * Géométrie propre au métier : appartenance à un rayon ou à une zone dessinée,
- * et similarité géographique entre deux annonces.
+ * Géométrie pure : distance haversine (mètres), appartenance à un rayon, et
+ * test point-dans-polygone (ray casting) pour les zones personnalisées.
  *
- * CE QUI N'EST PLUS ICI. Le calcul de distance lui-même vient du socle
- * (`distanceKm`, promu de `mister-family-map`) : même formule de haversine,
- * même rayon terrestre — vérifié en lisant les deux implémentations, pas en
- * comparant des noms. Seule l'unité changeait, kilomètres contre mètres.
+ * POURQUOI PAS `@mister-guiiug/dev-wpa-config/geo`. Le socle publie bien
+ * `distanceKm` — même formule, même rayon terrestre — mais CE FICHIER n'a pas
+ * le droit d'avoir de dépendance. `scripts/build-edge-core.mjs` recopie tout
+ * `src/domain/` dans `supabase/functions/_shared/core`, qui tourne sous **Deno**
+ * dans une Edge Function ; le générateur ne sait réécrire que les imports
+ * relatifs et `zod`. Surtout, le socle est publié sur `npm.pkg.github.com`, un
+ * registre PRIVÉ : même réécrit en `npm:`, Deno ne pourrait pas le résoudre là-bas.
  *
- * CE QUI RESTE ICI, ET POURQUOI. Le socle sait mesurer et valider ; il ne sait
- * pas ce qu'est une zone de recherche. `pointInPolygon` (zones dessinées à la
- * main), `withinRadius` et `geoSimilarity` (tolérance au brouillage volontaire
- * des positions par les portails) n'ont aucun équivalent — et `geoSimilarity`
- * en particulier est une règle d'anti-doublon immobilier, pas de la géométrie.
- *
- * `isInBoundingBox` et `formatDistance` du socle ne sont pas repris : l'app
- * n'affiche jamais de distance et ne filtre jamais par cadre visible.
+ * Autrement dit la limite n'est pas propre à `geo` : tout `src/domain/` est
+ * hors de portée du socle tant que le cœur est partagé avec les Edge Functions.
+ * `src/lib/` n'a pas cette contrainte — `geocoder.ts` utilise bien le socle.
  */
-import { distanceKm } from '@mister-guiiug/dev-wpa-config/geo';
 import type { GeoPoint } from './geoTypes';
+
+const EARTH_RADIUS_M = 6_371_000;
+
+function toRad(deg: number): number {
+  return (deg * Math.PI) / 180;
+}
 
 /** Distance orthodromique en mètres entre deux points GPS. */
 export function haversineMeters(a: GeoPoint, b: GeoPoint): number {
-  return distanceKm(a, b) * 1000;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+  return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
 /** Vrai si `point` est à moins de `radiusKm` du `center`. */
@@ -30,7 +40,7 @@ export function withinRadius(
   point: GeoPoint,
   radiusKm: number
 ): boolean {
-  return distanceKm(center, point) <= radiusKm;
+  return haversineMeters(center, point) <= radiusKm * 1000;
 }
 
 /**
