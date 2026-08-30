@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import '@mister-guiiug/dev-wpa-config/tailwind-preset.css';
+@import '@mister-guiiug/dev-wpa-config/components.css';
 
 /* ── Jetons de thème (clair par défaut, sombre via [data-theme="dark"]) ── */
 :root {
@@ -35,6 +36,38 @@
   --warn: #fbbf24;
   --ok: #4ade80;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* Contrat des composants partagés (`components.css`, tout en
+   `@layer components`) : les 15 jetons `--dwc-*` branchés une seule fois sur
+   les variables de l'app. Ceux qui pointent vers une variable redéfinie par
+   `[data-theme='dark']` suivent le thème tout seuls ; seuls les jetons posés
+   en dur sont repris dans le bloc sombre. */
+:root {
+  --dwc-surface: var(--surface);
+  --dwc-surface-2: var(--surface-2);
+  --dwc-text: var(--text);
+  --dwc-text-soft: var(--text-muted);
+  --dwc-border: var(--border);
+  /* Contour d'un CONTRÔLE (champ, bouton secondaire) : WCAG 1.4.11 exige 3:1,
+     que `--border` (#cbe9e6) ne tient pas ; `--text-muted` donne ~6:1 dans
+     les deux thèmes. Même choix que miss-uwh et miss-genius. */
+  --dwc-border-strong: var(--text-muted);
+  --dwc-primary: var(--primary);
+  --dwc-primary-contrast: var(--primary-contrast);
+  /* Même recette que le bandeau de synchro : primaire diluée dans la surface. */
+  --dwc-primary-soft: color-mix(in srgb, var(--primary) 14%, var(--surface));
+  --dwc-success: var(--ok);
+  --dwc-warning: var(--warn);
+  --dwc-danger: var(--danger);
+  /* Pas de jeton « info » dans l'app : valeurs éprouvées chez miss-uwh. */
+  --dwc-info: #0369a1;
+  --dwc-radius: var(--radius);
+  --dwc-shadow: var(--shadow);
+}
+
+[data-theme='dark'] {
+  --dwc-info: #38bdf8;
 }
 
 * {
@@ -95,35 +128,18 @@ body {
   gap: 0.9rem;
 }
 
-/* ── Bottom nav ── */
-.bottom-nav {
+/* ── Bottom nav (socle `react/bottom-nav`, habillé par components.css) ──
+   Ne restent ici que les écarts VOULUS par rapport à la base partagée :
+   barre FIXÉE au bas de l'écran (le shell lui réserve 4.5rem de padding)
+   et fond translucide flouté, identité de l'app depuis l'origine. */
+[data-dwc='bottom-nav'] {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   z-index: 20;
-  display: flex;
-  justify-content: space-around;
   background: color-mix(in srgb, var(--surface) 94%, transparent);
   backdrop-filter: blur(10px);
-  border-top: 1px solid var(--border);
-  padding: 0.35rem 0 calc(0.35rem + env(safe-area-inset-bottom));
-}
-.bottom-nav a {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 0.3rem;
-  font-size: 0.66rem;
-  color: var(--text-muted);
-  text-decoration: none;
-  border-radius: 10px;
-}
-.bottom-nav a.active {
-  color: var(--primary);
-  font-weight: 700;
 }
 
 /* ── Cards / list items ── */
@@ -262,12 +278,21 @@ label {
 .footer a {
   color: var(--primary);
 }
+/* Liens famille du socle (`react/app-footer`) centrés comme le reste du pied. */
+.footer [data-dwc='app-footer'] {
+  justify-content: center;
+}
 
-/* mini sparkline */
-.spark {
-  display: block;
-  width: 100%;
-  height: 44px;
+/* Sparkline du socle (`react/sparkline`) : jamais plus large que sa carte
+   (le composant fixe des attributs width/height ; preserveAspectRatio="none"
+   absorbe la compression sur petit écran). L'encre par défaut est la primaire
+   (components.css) ; `.spark-down` la passe en « bonne nouvelle » quand le
+   prix baisse — classe posée par le composant Sparkline de `ui.tsx`. */
+[data-dwc='sparkline'] svg {
+  max-width: 100%;
+}
+.spark-down {
+  color: var(--ok);
 }
 
 /* ── Menu d'en-tête ── */
