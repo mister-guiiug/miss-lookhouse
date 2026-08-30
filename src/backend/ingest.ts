@@ -12,7 +12,7 @@ export interface IngestNowResult {
 }
 
 export async function triggerIngestNow(): Promise<IngestNowResult> {
-  const s = getSupabase();
+  const s = await getSupabase();
   if (!s) throw new Error('Collecte indisponible (mode local).');
   const { data, error } = await s.functions.invoke<IngestNowResult>(
     'ingest-now',

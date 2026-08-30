@@ -17,7 +17,7 @@ export interface SharedConnector {
 }
 
 export async function listSharedConnectors(): Promise<SharedConnector[]> {
-  const s = getSupabase();
+  const s = await getSupabase();
   if (!s) return [];
   const { data, error } = await s.functions.invoke<{
     connectors: SharedConnector[];
@@ -30,7 +30,7 @@ export async function updateSharedConnector(
   id: string,
   patch: { enabled?: boolean; departments?: string[] }
 ): Promise<void> {
-  const s = getSupabase();
+  const s = await getSupabase();
   if (!s) throw new Error('Pilotage indisponible (mode local).');
   const { error } = await s.functions.invoke('connectors-admin', {
     body: { action: 'update', id, ...patch },

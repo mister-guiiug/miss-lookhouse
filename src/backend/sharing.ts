@@ -19,7 +19,7 @@ export async function shareSearch(
   searchId: string,
   email: string
 ): Promise<void> {
-  const s = getSupabase();
+  const s = await getSupabase();
   if (!s) throw new Error('Mode local : partage indisponible.');
   const { error } = await s.rpc('lh_share_search', {
     p_search_id: searchId,
@@ -32,7 +32,7 @@ export async function unshareSearch(
   searchId: string,
   userId: string
 ): Promise<void> {
-  const s = getSupabase();
+  const s = await getSupabase();
   if (!s) return;
   const { error } = await s.rpc('lh_unshare_search', {
     p_search_id: searchId,
@@ -43,7 +43,7 @@ export async function unshareSearch(
 
 /** Liste les partages d'une recherche (réservé au propriétaire ; lève sinon). */
 export async function listShares(searchId: string): Promise<Share[]> {
-  const s = getSupabase();
+  const s = await getSupabase();
   if (!s) return [];
   const { data, error } = await s.rpc('lh_list_shares', {
     p_search_id: searchId,
