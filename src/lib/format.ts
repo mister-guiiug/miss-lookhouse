@@ -11,12 +11,12 @@
  * avant. Ce qui change, c'est qu'elle n'est plus recopiée — un futur
  * `setDefaultLocale('en-GB')` suffirait désormais à faire suivre tout l'écran.
  *
- * CE QUI RESTE ICI, ET POURQUOI. Les cinq fonctions ci-dessous sont des règles
- * métier, sans équivalent au socle : le tiret d'absence, l'euro SANS centimes
- * (`formatCurrency` du socle n'accepte pas d'options `Intl`), le suffixe
- * « m² », l'abréviation « p. » des pièces, et le rapport prix/surface.
+ * CE QUI RESTE ICI, ET POURQUOI. Les quatre règles ci-dessous sont métier, sans
+ * équivalent au socle : le tiret d'absence, le suffixe « m² », l'abréviation
+ * « p. » des pièces, et le rapport prix/surface.
  */
 import {
+  formatCurrency,
   formatDate as formatDateIntl,
   formatNumber,
   formatRelativeTime,
@@ -24,17 +24,17 @@ import {
 
 /**
  * Un prix de bien s'écrit sans centimes : « 249 000 € », pas « 249 000,00 € ».
- * `formatCurrency` du socle ne prend pas d'options `Intl`, d'où le passage par
- * `formatNumber` en style monétaire — même rendu, locale suivie.
+ *
+ * CE QUI A CHANGÉ. Cette ligne passait par `formatNumber` en style monétaire,
+ * parce que `formatCurrency` du socle n'acceptait aucune option `Intl` — il
+ * fallait donc reposer `style` et `currency` à la main pour obtenir un euro
+ * arrondi. Le socle 3.26.0 les accepte : la fonction pose elle-même ce qui la
+ * définit, et il ne reste ici que ce qui est propre au métier, l'arrondi.
  */
-const PRICE: Intl.NumberFormatOptions = {
-  style: 'currency',
-  currency: 'EUR',
-  maximumFractionDigits: 0,
-};
+const PRICE: Intl.NumberFormatOptions = { maximumFractionDigits: 0 };
 
 export function formatPrice(n: number | null | undefined): string {
-  return n == null ? '—' : formatNumber(n, undefined, PRICE);
+  return n == null ? '—' : formatCurrency(n, undefined, 'EUR', PRICE);
 }
 
 export function formatSurface(n: number | null | undefined): string {
