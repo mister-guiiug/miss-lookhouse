@@ -1,5 +1,8 @@
 import { AppFooter } from '@mister-guiiug/dev-wpa-config/react/app-footer';
-import { REPO_URL, SPONSOR_URL } from '../links';
+import {
+  SPONSOR_URL,
+  repoUrl,
+} from '@mister-guiiug/dev-wpa-config/apps-catalog';
 
 /**
  * Pied de page : liens famille (code source + soutien) délégués au socle
@@ -11,7 +14,7 @@ export function Footer() {
   return (
     <div className="footer">
       <AppFooter
-        repoUrl={REPO_URL}
+        repoUrl={repoUrl('miss-lookhouse')}
         sponsorUrl={SPONSOR_URL}
         sourceLabel="Code source"
         sponsorLabel="Soutenir"
