@@ -4,6 +4,18 @@
 /**
  * Géométrie pure : distance haversine (mètres), appartenance à un rayon, et
  * test point-dans-polygone (ray casting) pour les zones personnalisées.
+ *
+ * POURQUOI PAS `@mister-guiiug/dev-wpa-config/geo`. Le socle publie bien
+ * `distanceKm` — même formule, même rayon terrestre — mais CE FICHIER n'a pas
+ * le droit d'avoir de dépendance. `scripts/build-edge-core.mjs` recopie tout
+ * `src/domain/` dans `supabase/functions/_shared/core`, qui tourne sous **Deno**
+ * dans une Edge Function ; le générateur ne sait réécrire que les imports
+ * relatifs et `zod`. Surtout, le socle est publié sur `npm.pkg.github.com`, un
+ * registre PRIVÉ : même réécrit en `npm:`, Deno ne pourrait pas le résoudre là-bas.
+ *
+ * Autrement dit la limite n'est pas propre à `geo` : tout `src/domain/` est
+ * hors de portée du socle tant que le cœur est partagé avec les Edge Functions.
+ * `src/lib/` n'a pas cette contrainte — `geocoder.ts` utilise bien le socle.
  */
 import type { GeoPoint } from './geoTypes.ts';
 

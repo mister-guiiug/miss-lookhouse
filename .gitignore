@@ -19,3 +19,6 @@ supabase/.branches/
 # Playwright artifacts
 playwright-report/
 test-results/
+
+# Rapports de couverture (npm run test:coverage)
+coverage/
