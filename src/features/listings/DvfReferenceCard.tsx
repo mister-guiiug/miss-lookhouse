@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { TrendingUp } from 'lucide-react';
+import { formatNumber } from '@mister-guiiug/dev-wpa-config/format';
 import { IS_SUPABASE } from '../../backend/config';
 import {
   getDvfReference,
@@ -16,8 +17,9 @@ interface Props {
   surfaceM2?: number | null;
 }
 
+// Dernier littéral `'fr-FR'` de l'app : `formatNumber` suit la locale du socle.
 const fr = (n: number | null | undefined) =>
-  n == null ? '—' : n.toLocaleString('fr-FR');
+  n == null ? '—' : formatNumber(n);
 
 export function DvfReferenceCard({
   postalCode,

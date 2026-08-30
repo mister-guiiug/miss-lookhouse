@@ -1,6 +1,10 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { Monitor, Moon, Sun } from 'lucide-react';
+import { ThemeProvider } from '@mister-guiiug/dev-wpa-config/react/theme-provider';
+import { IconsProvider } from '@mister-guiiug/dev-wpa-config/react/icons-context';
 import { useAppStore } from './store/useAppStore';
+import { THEME_COLOR, THEME_LEGACY_KEYS, THEME_STORAGE_KEY } from './theme';
 import { AuthProvider } from './auth/useAuth';
 import { AuthGate } from './auth/AuthGate';
 import { SupabaseSync } from './backend/SupabaseSync';
@@ -72,16 +76,37 @@ export function App() {
   }, [init]);
 
   return (
-    <AuthProvider>
-      <AuthGate>
-        {ready ? (
-          <RoutedApp />
-        ) : (
-          <div className="empty" style={{ paddingTop: '4rem' }}>
-            Chargement…
-          </div>
-        )}
-      </AuthGate>
-    </AuthProvider>
+    // UN SEUL écrivain de `data-theme`. `ThemeToggle` et l'écran Réglages
+    // lisent ce fournisseur ; ni l'un ni l'autre n'appelle `useTheme` pour son
+    // compte, ce qui créerait un second écrivain.
+    //
+    // `legacyKeys` reprend la clé historique `lh_theme` : la préférence déjà
+    // enregistrée sur l'appareil est relue puis réécrite sous la clé famille,
+    // une seule fois. Sans elle, l'adoption remettrait tout le monde au thème
+    // système — silencieusement.
+    //
+    // Pas d'`appId` : l'app peint elle-même ses `--dwc-*` depuis ses propres
+    // jetons dans `styles.css`. Une palette du catalogue les poserait en style
+    // EN LIGNE sur `<html>`, qui l'emporterait sur ce branchement.
+    <ThemeProvider
+      storageKey={THEME_STORAGE_KEY}
+      legacyKeys={THEME_LEGACY_KEYS}
+      themeColor={THEME_COLOR}
+    >
+      {/* Le socle dessine ses propres SVG ; l'app est sous lucide partout. */}
+      <IconsProvider icons={{ light: Sun, dark: Moon, system: Monitor }}>
+        <AuthProvider>
+          <AuthGate>
+            {ready ? (
+              <RoutedApp />
+            ) : (
+              <div className="empty" style={{ paddingTop: '4rem' }}>
+                Chargement…
+              </div>
+            )}
+          </AuthGate>
+        </AuthProvider>
+      </IconsProvider>
+    </ThemeProvider>
   );
 }

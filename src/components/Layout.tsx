@@ -1,8 +1,8 @@
 import { Outlet } from 'react-router-dom';
 import { Telescope } from 'lucide-react';
+import { ThemeToggle } from '@mister-guiiug/dev-wpa-config/react/theme-toggle';
 import { BottomNav } from './BottomNav';
 import { Footer } from './Footer';
-import { ThemeToggle } from './ThemeToggle';
 import { HeaderMenu } from './HeaderMenu';
 
 export function Layout() {
@@ -14,7 +14,7 @@ export function Layout() {
           Miss LookHouse
         </h1>
         <div className="row" style={{ marginLeft: 'auto', gap: '0.4rem' }}>
-          <ThemeToggle />
+          <ThemeToggle className="btn" />
           <HeaderMenu />
         </div>
       </header>

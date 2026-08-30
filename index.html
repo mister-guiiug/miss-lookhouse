@@ -2,11 +2,23 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <!-- Anti-FOUC : applique le thème avant tout rendu. -->
+    <!--
+      Anti-FOUC : applique le thème avant tout rendu.
+
+      Doit lire les MÊMES clés que `ThemeProvider` (`react/theme-provider`), et
+      dans le même ordre : la clé famille d'abord, l'ancienne `lh_theme` en
+      repli tant que la migration n'a pas eu lieu sur cet appareil. Sinon le
+      premier écran s'affiche dans le mauvais thème, puis bascule.
+
+      `system` est désormais une valeur stockable : elle se résout ici comme
+      l'absence de valeur, sur la préférence du système d'exploitation.
+    -->
     <script>
       (function () {
         try {
-          var v = localStorage.getItem('lh_theme');
+          var v =
+            localStorage.getItem('dwc_theme') ||
+            localStorage.getItem('lh_theme');
           var eff =
             v === 'light' || v === 'dark'
               ? v
@@ -14,6 +26,7 @@
                 ? 'dark'
                 : 'light';
           document.documentElement.setAttribute('data-theme', eff);
+          document.documentElement.style.colorScheme = eff;
         } catch (e) {
           document.documentElement.setAttribute('data-theme', 'light');
         }

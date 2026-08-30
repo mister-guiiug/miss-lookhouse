@@ -27,17 +27,16 @@ import { makeId } from './ids';
 import { emitSync } from '../backend/syncBus';
 import { IS_SUPABASE } from '../backend/config';
 
-type Theme = 'light' | 'dark';
-
+// LE THÈME N'EST PLUS ICI. Il vit dans `ThemeProvider`
+// (`@mister-guiiug/dev-wpa-config/react/theme-provider`), seul écrivain de
+// `data-theme` et de la balise `theme-color`. La clé historique `lh_theme` est
+// reprise par `legacyKeys` dans `App.tsx`, donc rien n'est perdu.
 interface AppState {
   ready: boolean;
-  theme: Theme;
   data: AppData;
   init: () => void;
   hydrate: (data: AppData) => void;
   wipeLocal: () => void;
-  setTheme: (t: Theme) => void;
-  toggleTheme: () => void;
   importPayload: (
     payload: string,
     searchId?: string
@@ -96,38 +95,8 @@ function toCriteria(s: LocalSearch): SearchCriteria {
   };
 }
 
-function applyTheme(theme: Theme): void {
-  if (typeof document === 'undefined') return;
-  document.documentElement.setAttribute('data-theme', theme);
-  const meta = document.getElementById('meta-theme-color');
-  if (meta)
-    meta.setAttribute('content', theme === 'dark' ? '#08201e' : '#0f766e');
-  try {
-    localStorage.setItem('lh_theme', theme);
-  } catch {
-    /* silencieux */
-  }
-}
-
-function initialTheme(): Theme {
-  try {
-    const v = localStorage.getItem('lh_theme');
-    if (v === 'light' || v === 'dark') return v;
-    if (
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-color-scheme: dark)').matches
-    ) {
-      return 'dark';
-    }
-  } catch {
-    /* silencieux */
-  }
-  return 'light';
-}
-
 export const useAppStore = create<AppState>()((set, get) => ({
   ready: false,
-  theme: 'light',
   data: emptyData(),
 
   init: () => {
@@ -139,19 +108,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
     // Normalise les états persistés antérieurs à l'ajout des vérifications.
     const data: AppData = { ...base, verifications: base.verifications ?? {} };
     if (!persisted) saveState(data);
-    const theme = initialTheme();
-    applyTheme(theme);
-    set({ ready: true, data, theme });
-  },
-
-  setTheme: t => {
-    applyTheme(t);
-    set({ theme: t });
-  },
-  toggleTheme: () => {
-    const next: Theme = get().theme === 'dark' ? 'light' : 'dark';
-    applyTheme(next);
-    set({ theme: next });
+    set({ ready: true, data });
   },
 
   importPayload: async (payload, searchId) => {

@@ -6,6 +6,8 @@
  * Le parsing de la réponse est PUR (testable sans réseau) ; `geocode` n'ajoute
  * que l'appel `fetch`. Base configurable via `VITE_GEOCODER_URL`.
  */
+import { isValidCoordinates } from '@mister-guiiug/dev-wpa-config/geo';
+
 const BASE =
   import.meta.env.VITE_GEOCODER_URL ?? 'https://api-adresse.data.gouv.fr';
 
@@ -39,7 +41,10 @@ export function parseBanResponse(json: unknown): GeocodeResult | null {
   if (!feature || !coords) return null;
   // GeoJSON : [longitude, latitude].
   const [lng, lat] = coords;
-  if (typeof lat !== 'number' || typeof lng !== 'number') return null;
+  // `isValidCoordinates` du socle vérifie AUSSI les bornes (±90 / ±180) : le
+  // test `typeof number` laissait passer un NaN ou une longitude aberrante,
+  // qui n'échouait ensuite que loin d'ici, dans un calcul de distance.
+  if (!isValidCoordinates({ lat, lng })) return null;
   return {
     lat,
     lng,
