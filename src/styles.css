@@ -142,6 +142,16 @@ body {
   backdrop-filter: blur(10px);
 }
 
+/* ── Bascule de thème (socle `react/theme-toggle`) ──
+   Elle porte `.btn` pour rester le jumeau du menu qui la suit dans l'en-tête ;
+   ne reste ici que le rembourrage compact de l'ancien bouton local, qui était
+   posé en style en ligne. */
+.btn[data-dwc='theme-toggle'] {
+  padding: 0.4rem 0.6rem;
+  min-width: 0;
+  min-height: 0;
+}
+
 /* ── Cards / list items ── */
 .card {
   background: var(--surface);

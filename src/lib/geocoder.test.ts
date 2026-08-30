@@ -41,4 +41,17 @@ describe('parseBanResponse', () => {
       })
     ).toBeNull();
   });
+
+  it('rejette des coordonnées hors bornes ou NaN', () => {
+    // `isValidCoordinates` du socle vérifie les bornes, pas seulement le type :
+    // le test `typeof number` laissait passer ces trois cas, qui n'échouaient
+    // ensuite que loin d'ici, dans un calcul de distance.
+    const at = (coordinates: unknown) =>
+      parseBanResponse({ features: [{ geometry: { coordinates } }] });
+
+    expect(at([4.846, 91])).toBeNull(); // latitude > 90
+    expect(at([181, 45.748])).toBeNull(); // longitude > 180
+    expect(at([Number.NaN, 45.748])).toBeNull();
+    expect(at([4.846, 45.748])).not.toBeNull();
+  });
 });

@@ -1,5 +1,6 @@
 import { Download, LogOut, Mail, RotateCcw, Rss, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useThemeContext } from '@mister-guiiug/dev-wpa-config/react/theme-provider';
 import { PushToggle } from './PushToggle';
 import { useAppStore } from '../../store/useAppStore';
 import { BACKEND, IS_SUPABASE } from '../../backend/config';
@@ -11,9 +12,17 @@ import {
 
 declare const __APP_VERSION__: string;
 
+/** Le troisième choix est neuf : l'ancien sélecteur n'avait que clair/sombre. */
+const THEMES = [
+  ['light', 'Clair'],
+  ['dark', 'Sombre'],
+  ['system', 'Système'],
+] as const;
+
 export function SettingsScreen() {
-  const theme = useAppStore(s => s.theme);
-  const setTheme = useAppStore(s => s.setTheme);
+  // `useThemeContext`, PAS `useTheme` : le hook monterait une seconde instance,
+  // qui écrirait `data-theme` en concurrence de celle du fournisseur.
+  const themeState = useThemeContext();
   const data = useAppStore(s => s.data);
   const resetDemo = useAppStore(s => s.resetDemo);
   const { user, signOut } = useAuth();
@@ -35,13 +44,15 @@ export function SettingsScreen() {
       <h2 className="section-title">Apparence</h2>
       <div className="card">
         <div className="row">
-          {(['light', 'dark'] as const).map(t => (
+          {THEMES.map(([value, label]) => (
             <button
-              key={t}
-              className={`btn ${theme === t ? 'btn-primary' : ''}`}
-              onClick={() => setTheme(t)}
+              key={value}
+              type="button"
+              aria-pressed={themeState?.theme === value}
+              className={`btn ${themeState?.theme === value ? 'btn-primary' : ''}`}
+              onClick={() => themeState?.setTheme(value)}
             >
-              {t === 'light' ? 'Clair' : 'Sombre'}
+              {label}
             </button>
           ))}
         </div>
