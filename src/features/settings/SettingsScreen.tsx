@@ -4,7 +4,10 @@ import { PushToggle } from './PushToggle';
 import { useAppStore } from '../../store/useAppStore';
 import { BACKEND, IS_SUPABASE } from '../../backend/config';
 import { useAuth } from '../../auth/useAuth';
-import { REPO_URL, SPONSOR_URL } from '../../links';
+import {
+  SPONSOR_URL,
+  repoUrl,
+} from '@mister-guiiug/dev-wpa-config/apps-catalog';
 
 declare const __APP_VERSION__: string;
 
@@ -139,7 +142,7 @@ export function SettingsScreen() {
         <div className="row" style={{ marginTop: '0.6rem' }}>
           <a
             className="btn"
-            href={REPO_URL}
+            href={repoUrl('miss-lookhouse')}
             target="_blank"
             rel="noopener noreferrer"
           >
