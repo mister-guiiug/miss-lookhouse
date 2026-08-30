@@ -56,7 +56,7 @@ function toConnector(r: Row): Connector {
 }
 
 export async function listConnectors(): Promise<Connector[]> {
-  const s = getSupabase();
+  const s = await getSupabase();
   if (!s) return [];
   const { data, error } = await s
     .from('source_connectors')
@@ -68,7 +68,7 @@ export async function listConnectors(): Promise<Connector[]> {
 }
 
 export async function saveConnector(input: ConnectorInput): Promise<void> {
-  const s = getSupabase();
+  const s = await getSupabase();
   if (!s) throw new Error('Mode local : connecteurs indisponibles.');
   const {
     data: { user },
@@ -93,7 +93,7 @@ export async function setConnectorEnabled(
   id: string,
   enabled: boolean
 ): Promise<void> {
-  const s = getSupabase();
+  const s = await getSupabase();
   if (!s) return;
   const { error } = await s
     .from('source_connectors')
@@ -103,7 +103,7 @@ export async function setConnectorEnabled(
 }
 
 export async function deleteConnector(id: string): Promise<void> {
-  const s = getSupabase();
+  const s = await getSupabase();
   if (!s) return;
   const { error } = await s.from('source_connectors').delete().eq('id', id);
   if (error) throw new Error(error.message);
@@ -127,7 +127,7 @@ export interface ConnectorTestResult {
 export async function testConnector(
   config: ConnectorConfig & { secretRef?: string | null }
 ): Promise<ConnectorTestResult> {
-  const s = getSupabase();
+  const s = await getSupabase();
   if (!s) return { error: 'Mode local : test indisponible.' };
   const { data, error } = await s.functions.invoke<ConnectorTestResult>(
     'connector-test',

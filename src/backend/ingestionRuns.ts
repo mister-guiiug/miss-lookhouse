@@ -39,7 +39,7 @@ function toRun(r: RunRow): IngestionRun {
 }
 
 export async function fetchIngestionRuns(limit = 100): Promise<IngestionRun[]> {
-  const s = getSupabase();
+  const s = await getSupabase();
   if (!s) return [];
   const { data, error } = await s
     .from('ingestion_runs')

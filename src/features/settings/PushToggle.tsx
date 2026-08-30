@@ -72,7 +72,7 @@ export function PushToggle() {
       ];
       // Rafraîchit le centre de notifications pour y refléter la notif de test
       // (et son statut de livraison) sans attendre une reconnexion.
-      const s = getSupabase();
+      const s = await getSupabase();
       if (s) {
         try {
           useAppStore.getState().hydrate(await pullAll(s));

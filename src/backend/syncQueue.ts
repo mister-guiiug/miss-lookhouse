@@ -1,131 +1,131 @@
 /**
- * File de synchronisation PERSISTANTE (offline-first). Remplace le push
- * fire-and-forget : chaque intention est mise en file (localStorage), puis
- * drainée en série. Un échec transitoire (réseau/RLS temporaire) est rejoué ;
- * au-delà de `MAX_ATTEMPTS`, l'élément part en dead-letter (consultable) plutôt
- * que d'être perdu silencieusement. Inspiré du `syncQueue` de miss-uwh.
- *
- * La logique est PURE (testable) : le `drain` reçoit un `processor` qui pousse
- * réellement vers le dépôt — il n'y a aucun I/O ici hormis localStorage.
+ * File de synchronisation PERSISTANTE (offline-first) — désormais fournie par
+ * le socle (`dev-wpa-config/sync-queue`). Ce module ne garde que le branchement
+ * app : mêmes clés localStorage que la copie locale historique, clé d'entité
+ * (`intentKey`) pour la fusion, et migration ponctuelle du format. L'adoption
+ * REND à la file ce que la copie (« Inspiré du syncQueue de miss-uwh ») avait
+ * perdu : le rejeu automatique en retrait exponentiel dispersé — sans attendre
+ * un évènement `online` qui ne vient jamais quand c'est le serveur qui tousse.
  */
+import {
+  createSyncQueue,
+  type SyncQueue,
+  type SyncQueueEntry,
+  type SyncQueueOptions,
+} from '@mister-guiiug/dev-wpa-config/sync-queue';
+import { createStore } from '@mister-guiiug/dev-wpa-config/storage';
 import type { SyncIntent } from './syncBus';
-import { makeId } from '../store/ids';
 
-export interface QueuedItem {
+/**
+ * `préfixe + clé` reproduit à l'octet près les clés historiques
+ * `miss-lookhouse-syncq-v1` / `miss-lookhouse-syncq-dead-v1` (même
+ * sérialisation : tableau JSON) — la file d'une session antérieure est reprise.
+ */
+const store = createStore('miss-lookhouse-');
+const QUEUE_KEY = 'syncq-v1';
+const DEAD_KEY = 'syncq-dead-v1';
+
+export type IntentQueue = SyncQueue<SyncIntent>;
+export type IntentEntry = SyncQueueEntry<SyncIntent>;
+
+/**
+ * Clé d'entité pour la fusion : toutes les écritures sont idempotentes par id
+ * (upsert, ou insert d'UUID générés côté client), la dernière version en
+ * attente d'une même entité suffit donc. Deux intentions de `kind` différent
+ * sur la même entité (ex. upsert puis delete d'une recherche) ne fusionnent
+ * pas : l'ordre FIFO est préservé.
+ */
+export function intentKey(intent: SyncIntent): string {
+  switch (intent.kind) {
+    case 'upsertSearch':
+      return `upsertSearch:${intent.search.id}`;
+    case 'deleteSearch':
+      return `deleteSearch:${intent.id}`;
+    case 'upsertStatus':
+      return `upsertStatus:${intent.listingId}`;
+    case 'addNote':
+      return `addNote:${intent.note.id}`;
+    case 'setNotificationRead':
+      return `setNotificationRead:${intent.id}`;
+    case 'addVerification':
+      return `addVerification:${intent.verification.id}`;
+  }
+}
+
+/** Forme écrite par l'ancienne copie locale (payload sous `intent`). */
+interface LegacyItem {
   id: string;
   intent: SyncIntent;
-  attempts: number;
-  enqueuedAt: string;
+  attempts?: number;
+  enqueuedAt?: string;
   lastError?: string;
 }
 
-export interface DrainResult {
-  done: number;
-  retried: number;
-  dead: number;
-}
-
-const KEY = 'miss-lookhouse-syncq-v1';
-const DEAD_KEY = 'miss-lookhouse-syncq-dead-v1';
-export const MAX_ATTEMPTS = 5;
-
-function load(key: string): QueuedItem[] {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return [];
-    const arr = JSON.parse(raw) as QueuedItem[];
-    return Array.isArray(arr) ? arr : [];
-  } catch {
-    return [];
-  }
-}
-
-function save(key: string, items: QueuedItem[]): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(items));
-  } catch {
-    /* quota / SSR : silencieux */
-  }
-}
-
-/** Met une intention en file (à drainer plus tard). */
-export function enqueue(intent: SyncIntent): QueuedItem {
-  const item: QueuedItem = {
-    id: makeId('sq'),
-    intent,
-    attempts: 0,
-    enqueuedAt: new Date().toISOString(),
-  };
-  const items = load(KEY);
-  items.push(item);
-  save(KEY, items);
-  return item;
-}
-
-export function queueSize(): number {
-  return load(KEY).length;
-}
-export function deadLetterSize(): number {
-  return load(DEAD_KEY).length;
-}
-export function listQueue(): QueuedItem[] {
-  return load(KEY);
-}
-export function listDeadLetter(): QueuedItem[] {
-  return load(DEAD_KEY);
-}
-export function clearQueue(): void {
-  save(KEY, []);
-}
-export function clearDeadLetter(): void {
-  save(DEAD_KEY, []);
-}
-
-/** Rejoue la dead-letter en la remettant en tête de file (action manuelle). */
-export function requeueDeadLetter(): void {
-  const dead = load(DEAD_KEY).map(d => ({ ...d, attempts: 0 }));
-  if (dead.length === 0) return;
-  save(KEY, [...dead, ...load(KEY)]);
-  save(DEAD_KEY, []);
+function isLegacy(entry: unknown): entry is LegacyItem {
+  return (
+    entry !== null &&
+    typeof entry === 'object' &&
+    typeof (entry as LegacyItem).id === 'string' &&
+    'intent' in entry &&
+    !('payload' in entry)
+  );
 }
 
 /**
- * Draine la file EN SÉRIE (FIFO, l'ordre est préservé). Pour chaque élément :
- * - succès → retiré de la file ;
- * - échec & attempts < MAX → on incrémente et on STOPPE (rejeu ultérieur, ordre
- *   préservé) ;
- * - échec & attempts ≥ MAX → dead-letter, et on continue avec le suivant.
+ * Migration PONCTUELLE du format : l'ancienne copie écrivait
+ * `{ id, intent, … }`, le socle attend `{ id, payload, key, … }`. Clés
+ * localStorage et sérialisation identiques : seuls les champs sont renommés
+ * (et la clé d'entité calculée) — aucune écriture en attente n'est perdue.
+ * Idempotente : sans entrée à l'ancien format, elle ne réécrit rien.
  */
-export async function drain(
-  processor: (intent: SyncIntent) => Promise<void>
-): Promise<DrainResult> {
-  const result: DrainResult = { done: 0, retried: 0, dead: 0 };
-  // Borne anti-boucle (les éléments ajoutés en cours de drain restent traités).
-  let guard = 1000;
-  while (guard-- > 0) {
-    const queue = load(KEY);
-    const item = queue[0];
-    if (!item) break;
-    try {
-      await processor(item.intent);
-      save(KEY, queue.slice(1));
-      result.done++;
-    } catch (e) {
-      const attempts = item.attempts + 1;
-      const lastError = e instanceof Error ? e.message : String(e);
-      if (attempts >= MAX_ATTEMPTS) {
-        // Permanent : dead-letter, puis on continue avec le suivant.
-        save(KEY, queue.slice(1));
-        save(DEAD_KEY, [...load(DEAD_KEY), { ...item, attempts, lastError }]);
-        result.dead++;
-        continue;
-      }
-      // Transitoire : on conserve l'ordre et on réessaiera plus tard.
-      queue[0] = { ...item, attempts, lastError };
-      save(KEY, queue);
-      result.retried++;
-      break;
-    }
-  }
-  return result;
+export function migrateLegacyItems(storageKey: string): void {
+  const items = store.get<unknown[]>(storageKey, []);
+  if (!Array.isArray(items) || !items.some(isLegacy)) return;
+  store.set(
+    storageKey,
+    items.map(entry =>
+      isLegacy(entry)
+        ? ({
+            id: entry.id,
+            payload: entry.intent,
+            key: intentKey(entry.intent),
+            attempts: entry.attempts ?? 0,
+            enqueuedAt: entry.enqueuedAt ?? new Date().toISOString(),
+            ...(entry.lastError !== undefined
+              ? { lastError: entry.lastError }
+              : {}),
+          } satisfies IntentEntry)
+        : entry
+    )
+  );
+}
+
+/**
+ * La file d'intentions de l'app, sur la persistance historique. Le transport
+ * (`process`) est injecté par l'appelant (il détient client + userId) ; le
+ * reste — drain sérialisé, rejeu en retrait exponentiel, lettres mortes
+ * rejouables, fusion par entité, plafond — vient du socle.
+ */
+export function createIntentQueue(
+  options: Pick<SyncQueueOptions<SyncIntent>, 'process' | 'onChange' | 'onDead'>
+): IntentQueue {
+  migrateLegacyItems(QUEUE_KEY);
+  migrateLegacyItems(DEAD_KEY);
+  return createSyncQueue<SyncIntent>({
+    store,
+    queueKey: QUEUE_KEY,
+    deadKey: DEAD_KEY,
+    keyOf: intentKey,
+    ...options,
+  });
+}
+
+/**
+ * Purge totale — file ET lettres mortes — sans exiger d'instance : le chemin
+ * de déconnexion (appareil partagé / RGPD) ne doit pas dépendre du fait que la
+ * file ait été construite pendant la session.
+ */
+export function clearPersistedQueues(): void {
+  store.set(QUEUE_KEY, []);
+  store.set(DEAD_KEY, []);
 }

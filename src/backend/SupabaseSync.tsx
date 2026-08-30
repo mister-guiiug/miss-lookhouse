@@ -1,23 +1,22 @@
 /**
  * Synchronisation Supabase (offline-first). Au login : `pullAll` → hydrate le
- * store. Ensuite : chaque intention du store est mise en FILE PERSISTANTE
- * (`syncQueue`) puis drainée en série (rejeu sur échec transitoire,
- * dead-letter au-delà de MAX_ATTEMPTS) — plus rien n'est perdu silencieusement.
- * À la déconnexion : purge du miroir local + de la file. Ne fait RIEN en local.
+ * store. Ensuite : chaque intention du store part dans la file PERSISTANTE du
+ * socle (`syncQueue`) — drain en série, rejeu automatique en retrait
+ * exponentiel dispersé, lettres mortes consultables et REJOUABLES au-delà des
+ * tentatives — plus rien n'est perdu silencieusement. À la déconnexion : purge
+ * du miroir local + de la file. Ne fait RIEN en local.
  */
 import { useEffect, useRef, useState } from 'react';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabase } from './supabaseClient';
 import { IS_SUPABASE } from './config';
 import { useAuth } from '../auth/useAuth';
 import { useAppStore } from '../store/useAppStore';
 import { onSync, type SyncIntent } from './syncBus';
 import {
-  clearDeadLetter,
-  clearQueue,
-  deadLetterSize,
-  drain,
-  enqueue,
-  queueSize,
+  clearPersistedQueues,
+  createIntentQueue,
+  type IntentQueue,
 } from './syncQueue';
 import {
   addNoteRemote,
@@ -30,7 +29,32 @@ import {
 } from './repository';
 
 type PullStatus = 'idle' | 'syncing' | 'ready' | 'error';
-const RETRY_MS = 15_000;
+
+function processIntent(
+  supabase: SupabaseClient,
+  userId: string,
+  intent: SyncIntent
+): Promise<void> {
+  switch (intent.kind) {
+    case 'upsertSearch':
+      return upsertSearch(supabase, userId, intent.search);
+    case 'deleteSearch':
+      return deleteSearchRemote(supabase, intent.id);
+    case 'upsertStatus':
+      return upsertStatus(supabase, userId, intent.listingId, intent.entry);
+    case 'addNote':
+      return addNoteRemote(supabase, userId, intent.listingId, intent.note);
+    case 'setNotificationRead':
+      return setNotificationRead(supabase, intent.id, intent.readAt);
+    case 'addVerification':
+      return addVerificationRemote(
+        supabase,
+        userId,
+        intent.listingId,
+        intent.verification
+      );
+  }
+}
 
 export function SupabaseSync() {
   const { user } = useAuth();
@@ -40,17 +64,21 @@ export function SupabaseSync() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(0);
   const [dead, setDead] = useState(0);
+  const [refused, setRefused] = useState(false);
   const prevUserId = useRef<string | null>(null);
+  const queueRef = useRef<IntentQueue | null>(null);
 
   // Déconnexion : purge le miroir local ET la file (appareil partagé / RGPD).
   useEffect(() => {
     if (!IS_SUPABASE) return;
     if (prevUserId.current && !user) {
       wipeLocal();
-      clearQueue();
-      clearDeadLetter();
+      queueRef.current?.clear();
+      queueRef.current = null;
+      clearPersistedQueues(); // même si la file n'a jamais été construite
       setPending(0);
       setDead(0);
+      setRefused(false);
     }
     prevUserId.current = user?.id ?? null;
   }, [user, wipeLocal]);
@@ -58,14 +86,16 @@ export function SupabaseSync() {
   // Pull à la connexion → hydrate.
   useEffect(() => {
     if (!IS_SUPABASE || !user) return;
-    const supabase = getSupabase();
-    if (!supabase) return;
     let active = true;
     setPull('syncing');
     setError(null);
-    pullAll(supabase)
+    getSupabase()
+      .then(supabase => {
+        if (!supabase) return null;
+        return pullAll(supabase);
+      })
       .then(data => {
-        if (active) {
+        if (active && data) {
           hydrate(data);
           setPull('ready');
         }
@@ -83,87 +113,77 @@ export function SupabaseSync() {
     };
   }, [user, hydrate]);
 
-  // Push via file persistante : enqueue → drain (série, rejeu, dead-letter).
+  // Push via la file du socle : enqueue → flush (drain sérialisé, rejeu en
+  // retrait exponentiel, lettre morte). `start()` draine la file résiduelle
+  // d'une session précédente puis rejoue à chaque retour en ligne.
   useEffect(() => {
     if (!IS_SUPABASE || !user) return;
-    const supabase = getSupabase();
-    if (!supabase) return;
     const userId = user.id;
+    let disposed = false;
+    let offSync: (() => void) | null = null;
 
-    const processIntent = async (intent: SyncIntent): Promise<void> => {
-      switch (intent.kind) {
-        case 'upsertSearch':
-          return upsertSearch(supabase, userId, intent.search);
-        case 'deleteSearch':
-          return deleteSearchRemote(supabase, intent.id);
-        case 'upsertStatus':
-          return upsertStatus(supabase, userId, intent.listingId, intent.entry);
-        case 'addNote':
-          return addNoteRemote(supabase, userId, intent.listingId, intent.note);
-        case 'setNotificationRead':
-          return setNotificationRead(supabase, intent.id, intent.readAt);
-        case 'addVerification':
-          return addVerificationRemote(
-            supabase,
-            userId,
-            intent.listingId,
-            intent.verification
-          );
-      }
-    };
-
-    let draining = false;
-    let retryTimer: number | undefined;
-    const refresh = () => {
-      setPending(queueSize());
-      setDead(deadLetterSize());
-    };
-
-    const runDrain = async () => {
-      if (draining) return;
-      draining = true;
-      try {
-        const res = await drain(processIntent);
-        refresh();
-        if (res.retried > 0) {
-          // Échec transitoire : nouvel essai différé.
-          if (retryTimer) window.clearTimeout(retryTimer);
-          retryTimer = window.setTimeout(() => void runDrain(), RETRY_MS);
-        }
-      } finally {
-        draining = false;
-      }
-    };
-
-    const off = onSync(intent => {
-      enqueue(intent);
-      refresh();
-      void runDrain();
-    });
-    const onOnline = () => void runDrain();
-    window.addEventListener('online', onOnline);
-
-    refresh();
-    void runDrain(); // traite la file résiduelle d'une session précédente
+    getSupabase()
+      .then(supabase => {
+        if (!supabase || disposed) return;
+        const queue = createIntentQueue({
+          process: intent => processIntent(supabase, userId, intent),
+          onChange: status => {
+            if (disposed) return;
+            setPending(status.pending);
+            setDead(status.dead);
+          },
+        });
+        queueRef.current = queue;
+        setPending(queue.pending());
+        setDead(queue.deadLetters().length);
+        offSync = onSync(intent => {
+          // `null` = plafond atteint : refuser VISIBLEMENT vaut mieux que
+          // jeter en silence.
+          setRefused(queue.enqueue(intent) === null);
+          void queue.flush();
+        });
+        void queue.start();
+      })
+      .catch(() => {
+        /* SDK indisponible : la file persiste, reprise à la prochaine session */
+      });
 
     return () => {
-      off();
-      window.removeEventListener('online', onOnline);
-      if (retryTimer) window.clearTimeout(retryTimer);
+      disposed = true;
+      offSync?.();
+      queueRef.current?.stop();
     };
   }, [user]);
+
+  const retryDead = () => {
+    const queue = queueRef.current;
+    if (!queue) return;
+    queue.requeueDead();
+    void queue.flush();
+  };
 
   if (!IS_SUPABASE) return null;
   let message: string | null = null;
   if (pull === 'syncing') message = 'Synchronisation…';
   else if (pull === 'error') message = `Synchro : ${error ?? 'erreur'}`;
-  else if (dead > 0)
-    message = `${dead} synchro(s) en échec — réessai à la reconnexion`;
+  else if (refused)
+    message = 'File de synchronisation pleine — modification non synchronisée';
+  else if (dead > 0) message = `${dead} synchro(s) en échec`;
   else if (pending > 0) message = `${pending} en attente de synchronisation…`;
   if (!message) return null;
   return (
     <div className="sync-banner" role="status">
       {message}
+      {pull !== 'syncing' && pull !== 'error' && !refused && dead > 0 && (
+        <button
+          type="button"
+          className="btn"
+          style={{ marginLeft: '0.6rem' }}
+          onClick={retryDead}
+        >
+          Réessayer
+        </button>
+      )}
     </div>
   );
 }

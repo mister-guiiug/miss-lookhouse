@@ -37,28 +37,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
-    const supabase = getSupabase();
-    if (!supabase) {
-      setReady(true);
-      return;
-    }
     let active = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (!active) return;
-      setSession(data.session);
-      setReady(true);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
-    });
+    let subscription: { unsubscribe: () => void } | null = null;
+    getSupabase()
+      .then(supabase => {
+        if (!supabase) {
+          if (active) setReady(true);
+          return;
+        }
+        void supabase.auth.getSession().then(({ data }) => {
+          if (!active) return;
+          setSession(data.session);
+          setReady(true);
+        });
+        const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+          if (active) setSession(s);
+        });
+        subscription = sub.subscription;
+        if (!active) subscription.unsubscribe();
+      })
+      .catch(() => {
+        // Client indisponible (SDK non chargé) : l'app reste utilisable sans
+        // session plutôt que bloquée sur l'écran d'attente.
+        if (active) setReady(true);
+      });
     return () => {
       active = false;
-      sub.subscription.unsubscribe();
+      subscription?.unsubscribe();
     };
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const supabase = getSupabase();
+    const supabase = await getSupabase();
     if (!supabase)
       return { error: 'Mode local : authentification indisponible.' };
     const { error } = await supabase.auth.signInWithPassword({
@@ -69,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string) => {
-    const supabase = getSupabase();
+    const supabase = await getSupabase();
     if (!supabase) {
       return {
         error: 'Mode local : inscription indisponible.',
@@ -85,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    const supabase = getSupabase();
+    const supabase = await getSupabase();
     if (supabase) await supabase.auth.signOut();
   };
 

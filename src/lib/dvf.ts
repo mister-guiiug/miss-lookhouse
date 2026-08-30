@@ -23,7 +23,7 @@ export async function getDvfReference(params: {
   typeLocal?: string | null;
   city?: string | null;
 }): Promise<DvfReference | null> {
-  const s = getSupabase();
+  const s = await getSupabase();
   if (!s) return null;
   const { data, error } = await s.functions.invoke<DvfReference>('dvf', {
     body: params,

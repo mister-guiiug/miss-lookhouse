@@ -57,7 +57,7 @@ export async function enablePush(): Promise<{ ok: boolean; error?: string }> {
   if (!json.endpoint || !keys.p256dh || !keys.auth)
     return { ok: false, error: 'Abonnement incomplet.' };
 
-  const s = getSupabase();
+  const s = await getSupabase();
   if (!s) return { ok: false, error: 'Mode local.' };
   const {
     data: { user },
@@ -102,7 +102,7 @@ export async function sendTestNotification(): Promise<{
   error?: string;
   dispatch?: TestDispatch | null;
 }> {
-  const s = getSupabase();
+  const s = await getSupabase();
   if (!s) return { ok: false, error: 'Mode local.' };
   const { data, error } = await s.functions.invoke('notify-test', { body: {} });
   if (error) return { ok: false, error: error.message };
@@ -117,7 +117,7 @@ export async function sendTestNotification(): Promise<{
 
 /** Se désabonne (navigateur + base) et coupe la préférence. */
 export async function disablePush(): Promise<{ ok: boolean; error?: string }> {
-  const s = getSupabase();
+  const s = await getSupabase();
   const sub = await getPushSubscription();
   if (sub) {
     const endpoint = sub.endpoint;
