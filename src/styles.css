@@ -357,6 +357,18 @@ label {
 }
 
 /* bandeau de synchronisation Supabase */
+/* Bandeau hors-ligne du socle. Il vient AVANT `.app-shell`, donc hors de ses
+   720 px : sans ces gouttières il traverserait l'écran d'un bord à l'autre
+   pendant que tout le reste reste centré. `components.css` fournit déjà les
+   couleurs (jetons `--dwc-*`, peints par cette feuille) et le `role="status"`.
+   Le bandeau de synchro, lui, est fixé en bas — les deux ne se recouvrent
+   jamais. */
+[data-dwc='connection-banner'] {
+  max-width: 720px;
+  margin: 0.5rem auto 0;
+  width: calc(100% - 2rem);
+}
+
 .sync-banner {
   position: fixed;
   left: 0;
