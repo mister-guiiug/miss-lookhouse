@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Telescope } from 'lucide-react';
+import { useActionGuard } from '@mister-guiiug/dev-wpa-config/react/use-action-guard';
 import { useAuth } from '../../auth/useAuth';
 
 /** Connexion / inscription par e-mail + mot de passe (mode Supabase). */
@@ -12,8 +13,23 @@ export function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  /**
+   * LA SEULE ACTION DE L'APP QU'IL FAUT REFUSER AVANT, ET NON APRÈS.
+   *
+   * Tout le reste est déjà armé : les six intentions du store passent par la
+   * file persistante du socle (rejeu au retour du réseau), et les écritures
+   * directes — connecteurs, partage, push, déclenchement de collecte —
+   * attrapent toutes leur erreur et l'affichent. Aucune n'échoue en silence.
+   *
+   * La connexion, elle, n'a pas de file possible et pas de repli : sans
+   * réseau, `signInWithPassword` revient avec un `Failed to fetch` que
+   * l'écran affiche tel quel, APRÈS avoir fait saisir une adresse et un mot
+   * de passe et attendre. Le dire avant coûte un clic de moins et une phrase
+   * compréhensible de plus.
+   */
+  const guard = useActionGuard({ online: true });
+
+  const login = async () => {
     setBusy(true);
     setError(null);
     setInfo(null);
@@ -35,6 +51,17 @@ export function LoginScreen() {
     } finally {
       setBusy(false);
     }
+  };
+
+  /**
+   * `preventDefault` AVANT la garde : `wrap` rend la fonction inerte, et une
+   * soumission inerte qui n'a pas annulé l'événement laisse le navigateur
+   * recharger la page. La touche Entrée passe aussi par ici — ne garder que
+   * le bouton laisserait la porte ouverte.
+   */
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void guard.wrap(login)();
   };
 
   return (
@@ -95,7 +122,7 @@ export function LoginScreen() {
           <button
             type="submit"
             className="btn btn-primary"
-            disabled={busy}
+            disabled={busy || guard.disabled}
             style={{ width: '100%', justifyContent: 'center' }}
           >
             {busy
@@ -104,6 +131,18 @@ export function LoginScreen() {
                 ? 'Se connecter'
                 : 'Créer un compte'}
           </button>
+
+          {/* Le motif, sous le bouton qu'il explique : un bouton grisé sans
+              explication est le même cul-de-sac, en plus poli. */}
+          {guard.reason && (
+            <p
+              role="status"
+              className="muted"
+              style={{ fontSize: '0.85rem', textAlign: 'center' }}
+            >
+              {guard.reason}
+            </p>
+          )}
 
           <button
             type="button"

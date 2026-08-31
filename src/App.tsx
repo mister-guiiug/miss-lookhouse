@@ -9,6 +9,7 @@ import { AuthProvider } from './auth/useAuth';
 import { AuthGate } from './auth/AuthGate';
 import { SupabaseSync } from './backend/SupabaseSync';
 import { Layout } from './components/Layout';
+import { OfflineBanner } from './components/OfflineBanner';
 import { DashboardScreen } from './features/dashboard/DashboardScreen';
 import { SearchesScreen } from './features/searches/SearchesScreen';
 import { SearchEditScreen } from './features/searches/SearchEditScreen';
@@ -96,6 +97,10 @@ export function App() {
       {/* Le socle dessine ses propres SVG ; l'app est sous lucide partout. */}
       <IconsProvider icons={{ light: Sun, dark: Moon, system: Monitor }}>
         <AuthProvider>
+          {/* AU-DESSUS de la garde, pas dedans : l'écran de connexion est le
+              premier endroit où la coupure fait mal, et c'est justement celui
+              qui n'affichait rien. */}
+          <OfflineBanner />
           <AuthGate>
             {ready ? (
               <RoutedApp />
