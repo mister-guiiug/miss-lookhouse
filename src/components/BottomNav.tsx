@@ -1,4 +1,3 @@
-import type { ComponentType } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { Home, Search, List, CopyCheck, Bell } from 'lucide-react';
 import { BottomNav as DwcBottomNav } from '@mister-guiiug/dev-wpa-config/react/bottom-nav';
@@ -35,13 +34,12 @@ export function BottomNav() {
           ? { badge: unread, badgeLabel: `${unread} non lues` }
           : {}),
       }))}
-      // `linkComponent` est typé `ComponentType<Record<string, unknown>>`, qui
-      // refuse un composant à prop obligatoire — donc `NavLink` et son `to`,
-      // alors que c'est l'usage documenté du socle. La conversion est sûre :
-      // `hrefProp` fournit précisément `to`. Même motif que miss-genius.
-      linkComponent={
-        NavLink as unknown as ComponentType<Record<string, unknown>>
-      }
+      // Le socle 3.32.0 a élargi `linkComponent` à `ComponentType<any>` :
+      // le type refusait jusque-là tout composant à prop OBLIGATOIRE, donc
+      // précisément le composant de lien de react-router et son `to` —
+      // l'usage que sa propre documentation donne en exemple. Cinq apps
+      // portaient la même conversion ; elle n'a plus lieu d'être.
+      linkComponent={NavLink}
       hrefProp="to"
     />
   );
