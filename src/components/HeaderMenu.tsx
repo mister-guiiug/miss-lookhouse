@@ -5,12 +5,24 @@ import { Activity, MoreVertical, RefreshCw, Settings } from 'lucide-react';
 /**
  * Met à jour le service worker (si présent) puis recharge la page. En dev (pas
  * de SW), se contente de recharger.
+ *
+ * `getRegistration()` AU SINGULIER, et c'est le point. Les seize apps de la
+ * famille sont publiées sous `https://mister-guiiug.github.io/<app>/` — une
+ * seule origine. `getRegistrations()` (au pluriel) rend donc les workers des
+ * quinze autres apps, et cette fonction leur demandait à toutes de se mettre à
+ * jour : du travail réseau qu'aucune n'a demandé, déclenché par un bouton
+ * d'ici. `getRegistration()` sans argument rend la registration qui contrôle
+ * CETTE page, et elle seule.
+ *
+ * Le tort restait mesuré — ce code ne désinscrit rien et n'efface aucun cache,
+ * contrairement à ce que faisaient le socle et mister-doc. Mais c'est la même
+ * confusion : l'origine n'est pas l'application.
  */
 async function reloadAndUpdate(): Promise<void> {
   try {
     if ('serviceWorker' in navigator) {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map(r => r.update()));
+      const registration = await navigator.serviceWorker.getRegistration();
+      await registration?.update();
     }
   } catch {
     /* ignore : on recharge quand même */
