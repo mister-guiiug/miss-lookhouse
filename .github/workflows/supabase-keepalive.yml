@@ -1,0 +1,23 @@
+# Anti-pause Supabase Free — caller planifié.
+#
+# Un projet Free se met en pause après sept jours sans requête, et le
+# déploiement échoue alors sur « project is paused » (miss-carbook, 29/08/2026).
+# Ce ping fait un SELECT anonyme sur la table `keep_alive` tous les trois jours.
+#
+# Requiert les secrets VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY, et la table
+# `keep_alive` (migration 0011_keep_alive.sql).
+name: Supabase keep-alive
+
+on:
+  schedule:
+    - cron: '31 4 */3 * *' # ~tous les 3 jours (< 7 j) — décalé par dépôt
+  workflow_dispatch:
+
+jobs:
+  keepalive:
+    uses: mister-guiiug/dev-wpa-config/.github/workflows/pwa-supabase-keepalive.yml@v3
+    # Nommés, pas hérités : le workflow déclare exactement ces deux secrets.
+    # `inherit` lui donnerait accès à tout le trousseau du dépôt.
+    secrets:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
