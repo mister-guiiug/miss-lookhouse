@@ -7,7 +7,7 @@
   "description": "Miss LookHouse — PWA de veille immobilière responsable : surveille plusieurs sources d'annonces sur une zone géographique, historise les annonces, détecte les doublons/recyclages, suit l'évolution des prix, classe manuellement et notifie. Collecte responsable (imports, API officielles, connecteurs paramétrables). Local-first par défaut, backend Supabase sécurisé en option.",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && pwa-bundle-budget",
     "build:analyze": "cross-env ANALYZE=1 npm run build",
     "preview": "vite preview --base /miss-lookhouse/",
     "lint": "eslint .",
@@ -24,6 +24,9 @@
     "build:edge-core": "node scripts/build-edge-core.mjs && prettier --write \"supabase/functions/_shared/core/**/*.ts\"",
     "seed:agences": "node scripts/seed-agences.mjs",
     "prepare": "husky || true"
+  },
+  "bundleBudget": {
+    "totalGzipKb": 275
   },
   "lint-staged": {
     "*.{ts,tsx,js,mjs,json,css,md,yml,yaml}": "prettier --write"
