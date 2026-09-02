@@ -4,6 +4,8 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { visualizer } from 'rollup-plugin-visualizer';
 import { readFileSync } from 'node:fs';
+import { pwaSeoPlugin } from '@mister-guiiug/dev-wpa-config/vite-pwa-base';
+import { cspPlugin } from '@mister-guiiug/dev-wpa-config/vite-csp';
 
 const analyze = process.env.ANALYZE === '1';
 const { version } = JSON.parse(readFileSync('./package.json', 'utf-8')) as {
@@ -71,8 +73,31 @@ export default defineConfig(({ command }) => {
     plugins: [
       react(),
       tailwindcss(),
+      // Sitemap, robots, canonique, Open Graph — et deux <meta theme-color>
+      // par schéma (relevé du 02/09/2026 : lookhouse n'avait rien de tout ça).
+      pwaSeoPlugin({
+        basePath,
+        logoPath: '/icon-512.png',
+        themeColor: { light: '#ecfeff', dark: '#08201e' },
+      }),
+      // CSP par hash (socle). connect-src : Supabase (REST + realtime) et le
+      // géocodeur BAN ; img-src large : les photos des annonces et les tuiles
+      // de carte viennent de partout.
+      cspPlugin({
+        dev: command === 'serve',
+        connectSrc: [
+          "'self'",
+          'https://*.supabase.co',
+          'wss://*.supabase.co',
+          'https://api-adresse.data.gouv.fr',
+        ],
+        imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+      }),
       VitePWA({
-        registerType: 'autoUpdate',
+        // `prompt`, pas `autoUpdate` : un déploiement ne recharge plus la page
+        // en pleine saisie ; le bandeau du socle (AppUpdates, main.tsx) laisse
+        // l'utilisateur choisir le moment.
+        registerType: 'prompt',
         includeAssets: ['favicon.svg', 'robots.txt'],
         workbox: {
           globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,webmanifest}'],
@@ -96,18 +121,32 @@ export default defineConfig(({ command }) => {
           lang: 'fr',
           dir: 'ltr',
           categories: ['productivity', 'utilities', 'finance'],
+          // Des PNG à côté du SVG : iOS et les lanceurs Android n'utilisent
+          // pas le vectoriel pour l'icône d'accueil (relevé du 02/09/2026).
           icons: [
             {
-              src: 'favicon.svg',
-              sizes: 'any',
-              type: 'image/svg+xml',
+              src: 'icon-192.png',
+              sizes: '192x192',
+              type: 'image/png',
               purpose: 'any',
+            },
+            {
+              src: 'icon-512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'any',
+            },
+            {
+              src: 'icon-maskable-512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable',
             },
             {
               src: 'favicon.svg',
               sizes: 'any',
               type: 'image/svg+xml',
-              purpose: 'maskable',
+              purpose: 'any',
             },
           ],
         },
