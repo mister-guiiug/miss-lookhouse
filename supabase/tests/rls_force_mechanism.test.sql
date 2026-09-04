@@ -61,11 +61,12 @@ reset role;
 -- ── 1. Sans BYPASSRLS : FORCE s'applique au DEFINER ───────────────────────
 set role lh_probe_caller;
 
--- Tous les arguments sont castés : `throws_ok` a des surcharges (text, int4…)
--- que des littéraux `unknown` ne suffisent pas à départager.
+-- Les arguments sont castés explicitement : `throws_ok` est surchargé, et son
+-- paramètre SQLSTATE est un `char(5)` — ni `text`, ni un littéral `unknown`,
+-- qui laissent tous deux la résolution de surcharge sans réponse.
 select throws_ok(
   $$select lh_probe_write('sous force')$$::text,
-  '42501'::text,
+  '42501'::char(5),
   null::text,
   'FORCE soumet la fonction SECURITY DEFINER aux politiques : appel REFUSÉ'::text
 );
@@ -107,7 +108,7 @@ set role lh_probe_owner;
 
 select throws_ok(
   $$insert into lh_probe_audit (note) values ('en direct')$$::text,
-  '42501'::text,
+  '42501'::char(5),
   null::text,
   'FORCE bloque aussi le propriétaire en écriture DIRECTE — son seul apport réel'::text
 );
