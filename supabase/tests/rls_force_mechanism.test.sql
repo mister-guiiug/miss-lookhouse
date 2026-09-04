@@ -2,18 +2,25 @@
 -- ║ Miss LookHouse — le mécanisme, isolé de Supabase.                     ║
 -- ║                                                                        ║
 -- ║ Le test voisin observe ce que FONT nos migrations. Celui-ci établit    ║
--- ║ POURQUOI, sur une table jetable et des rôles créés pour l'occasion :   ║
+-- ║ POURQUOI, sur des tables jetables et des rôles créés pour l'occasion.  ║
 -- ║                                                                        ║
--- ║   1. sous FORCE, une fonction SECURITY DEFINER dont le propriétaire    ║
--- ║      n'a ni BYPASSRLS ni SUPERUSER est soumise aux politiques — donc   ║
--- ║      BLOQUÉE sur une table sans politique d'écriture ;                 ║
--- ║   2. l'attribut BYPASSRLS l'emporte sur FORCE : le même appel passe.   ║
+-- ║ Deux tables STRICTEMENT identiques — RLS forcée, aucune politique —    ║
+-- ║ chacune écrite par une fonction SECURITY DEFINER. Une seule différence ║
+-- ║ entre elles : leur PROPRIÉTAIRE.                                       ║
 -- ║                                                                        ║
--- ║ Ces deux faits sont ceux de PostgreSQL, pas ceux de notre schéma. Ils  ║
--- ║ restent vrais si Supabase change la configuration de ses rôles — et    ║
--- ║ c'est justement pour ça qu'ils méritent d'être écrits : le jour où     ║
--- ║ `postgres` perdrait BYPASSRLS, la ligne 2 basculerait, et avec elle    ║
--- ║ tout schéma qui aurait parié dessus sans le savoir.                    ║
+-- ║   • propriétaire sans BYPASSRLS → l'appel est REFUSÉ (42501) ;         ║
+-- ║   • propriétaire avec BYPASSRLS → le même appel PASSE.                 ║
+-- ║                                                                        ║
+-- ║ Ce sont les faits de PostgreSQL, pas ceux de notre schéma : ils        ║
+-- ║ resteront vrais si Supabase change la configuration de ses rôles. Et   ║
+-- ║ c'est pour ça qu'ils méritent d'être écrits — le jour où `postgres`    ║
+-- ║ perdrait BYPASSRLS, le second cas basculerait, et avec lui tout schéma ║
+-- ║ qui aurait parié dessus sans le savoir. 0012 a fait en sorte que le    ║
+-- ║ nôtre n'en fasse plus partie.                                          ║
+-- ║                                                                        ║
+-- ║ NB : le test ne DONNE jamais BYPASSRLS à personne — l'attribut exige   ║
+-- ║ le superutilisateur, que `postgres` n'est pas sur Supabase. Il se sert ║
+-- ║ des rôles tels qu'ils sont, ce qui vaut mieux : il mesure le réel.     ║
 -- ╚══════════════════════════════════════════════════════════════════════╝
 
 create extension if not exists pgtap with schema extensions;
@@ -24,7 +31,20 @@ begin;
 
 select plan(6);
 
--- ── Un propriétaire ordinaire : ni superutilisateur, ni BYPASSRLS ─────────
+-- ── Attraper le SQLSTATE plutôt que de plaider auprès de throws_ok() ──────
+-- `throws_ok` est surchargé (text, char(5), int4…) et aucune combinaison de
+-- casts ne l'a résolu ici. On rend le code d'erreur, on le compare : même
+-- verdict, zéro résolution de surcharge. SECURITY INVOKER — donc exécutée
+-- sous le rôle courant, ce qui est tout l'intérêt.
+create function lh_probe_try(p_sql text) returns text language plpgsql as $fn$
+begin
+  execute p_sql;
+  return 'aucune erreur';
+exception
+  when others then return sqlstate;
+end
+$fn$;
+
 create role lh_probe_owner nologin;
 create role lh_probe_caller nologin;
 grant lh_probe_owner to current_user;
@@ -39,78 +59,83 @@ select ok(
 from pg_roles
 where rolname = 'lh_probe_owner';
 
+-- ── Cas A : propriétaire ORDINAIRE ────────────────────────────────────────
 set role lh_probe_owner;
 
-create table lh_probe_audit (id bigint generated always as identity primary key, note text);
+create table lh_probe_a (id bigint generated always as identity primary key, note text);
+alter table lh_probe_a enable row level security;
+alter table lh_probe_a force row level security;
 
--- Exactement la situation de audit_logs : RLS forcée, AUCUNE politique.
-alter table lh_probe_audit enable row level security;
-alter table lh_probe_audit force row level security;
-
-create function lh_probe_write(p_note text) returns void
+create function lh_probe_write_a(p_note text) returns void
 language plpgsql security definer set search_path = public as $fn$
 begin
-  insert into lh_probe_audit (note) values (p_note);
+  insert into lh_probe_a (note) values (p_note);
 end
 $fn$;
 
-grant execute on function lh_probe_write(text) to lh_probe_caller;
+grant execute on function lh_probe_write_a(text) to lh_probe_caller;
 
 reset role;
+
+-- ── Cas B : propriétaire PORTEUR de BYPASSRLS (celui de nos vraies tables)
+create table lh_probe_b (id bigint generated always as identity primary key, note text);
+alter table lh_probe_b enable row level security;
+alter table lh_probe_b force row level security;
+
+create function lh_probe_write_b(p_note text) returns void
+language plpgsql security definer set search_path = public as $fn$
+begin
+  insert into lh_probe_b (note) values (p_note);
+end
+$fn$;
+
+grant execute on function lh_probe_write_b(text) to lh_probe_caller;
 
 -- ── 1. Sans BYPASSRLS : FORCE s'applique au DEFINER ───────────────────────
 set role lh_probe_caller;
 
--- Les arguments sont castés explicitement : `throws_ok` est surchargé, et son
--- paramètre SQLSTATE est un `char(5)` — ni `text`, ni un littéral `unknown`,
--- qui laissent tous deux la résolution de surcharge sans réponse.
-select throws_ok(
-  $$select lh_probe_write('sous force')$$::text,
-  '42501'::char(5),
-  null::text,
-  'FORCE soumet la fonction SECURITY DEFINER aux politiques : appel REFUSÉ'::text
+select is(
+  lh_probe_try($$select lh_probe_write_a('sous force')$$),
+  '42501'::text,
+  'FORCE soumet la fonction SECURITY DEFINER aux politiques : appel REFUSÉ'
 );
 
 reset role;
 
 select is(
-  (select count(*)::int from lh_probe_audit),
+  (select count(*)::int from lh_probe_a),
   0,
   '... et rien n''est écrit'
 );
 
 -- ── 2. BYPASSRLS l'emporte sur FORCE ──────────────────────────────────────
-alter role lh_probe_owner bypassrls;
-
 set role lh_probe_caller;
 
-select lives_ok(
-  $$select lh_probe_write('avec bypassrls')$$,
-  'le propriétaire porte BYPASSRLS : le même appel passe'
+select is(
+  lh_probe_try($$select lh_probe_write_b('avec bypassrls')$$),
+  'aucune erreur'::text,
+  'même table, même fonction, propriétaire porteur de BYPASSRLS : ça passe'
 );
 
 reset role;
 
 select is(
-  (select count(*)::int from lh_probe_audit),
+  (select count(*)::int from lh_probe_b),
   1,
   '... et la ligne est écrite — BYPASSRLS l''emporte sur FORCE'
 );
 
 -- ── 3. Ce que FORCE protégeait vraiment : la connexion directe ────────────
--- Sans BYPASSRLS, le propriétaire lui-même était bloqué en écriture directe.
+-- Sans BYPASSRLS, le propriétaire lui-même est bloqué en écriture directe.
 -- C'est le SEUL apport de FORCE — et ce chemin n'existe pas via PostgREST,
 -- qui se connecte en `authenticator` puis bascule en anon/authenticated/
 -- service_role, jamais sous le rôle propriétaire des tables.
-alter role lh_probe_owner nobypassrls;
-
 set role lh_probe_owner;
 
-select throws_ok(
-  $$insert into lh_probe_audit (note) values ('en direct')$$::text,
-  '42501'::char(5),
-  null::text,
-  'FORCE bloque aussi le propriétaire en écriture DIRECTE — son seul apport réel'::text
+select is(
+  lh_probe_try($$insert into lh_probe_a (note) values ('en direct')$$),
+  '42501'::text,
+  'FORCE bloque aussi le propriétaire en écriture DIRECTE — son seul apport réel'
 );
 
 reset role;
