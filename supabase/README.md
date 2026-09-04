@@ -32,7 +32,9 @@ inoffensive car **toute la sécurité est appliquée ici**, jamais par le client
 Ordre : `0001_schema` → `0002_rls` → `0003_seed` (référentiel sources) →
 `0004_scheduling` (pg_cron + pg_net) → `0005_notifications_dispatch` →
 `0006_search_sharing` → `0007_list_shares` → `0008_share_neutral` →
-`0009_notification_delivery` (statut de livraison + garde de colonne).
+`0009_notification_delivery` (statut de livraison + garde de colonne) →
+`0010_public_catalog` → `0011_keep_alive` (table du ping anti-pause) →
+`0012_rls_no_force` (retrait de `force row level security`, cf. §7).
 
 ## 3. Storage
 
@@ -117,11 +119,48 @@ select vault.create_secret('<INGEST_TOKEN>', 'lh_ingest_token');
 | Toutes les tables `…` portant `user_id` | `= auth.uid()` | `= auth.uid()`                      |
 | `audit_logs`                            | propriétaire   | triggers serveur (SECURITY DEFINER) |
 
-- **deny-by-default** : `enable` + `force row level security` sur toutes les tables.
+- **deny-by-default** : `enable row level security` sur toutes les tables, et
+  aucune politique qui ne nomme pas `auth.uid()` (hors référentiel `sources`,
+  en lecture seule).
 - Les jobs planifiés écrivent avec `service_role` (hors RLS) **en renseignant
   explicitement `user_id`**.
 - Les Edge Functions appelées par un utilisateur transmettent son JWT → la RLS
   s'applique. Celles planifiées sont gated par `INGEST_TOKEN`.
+
+### `force row level security` est écarté, volontairement
+
+0002 le posait sur vingt tables. `0012_rls_no_force.sql` le retire, et son
+en-tête détaille pourquoi. En bref :
+
+`force` ne change le sort que du **propriétaire** des tables (`postgres`). Or ce
+propriétaire porte l'attribut `BYPASSRLS`, **mesuré à `true`** par
+`supabase/tests/` — et `BYPASSRLS` l'emporte sur `force`. Il ne protégeait donc
+rien. En revanche il faisait dépendre l'app entière d'un attribut de rôle qui ne
+nous appartient pas : les triggers d'audit de 0002 écrivent dans `audit_logs`
+(table **sans politique d'écriture**) à chaque écriture sur `saved_searches` et
+`listing_status`. Si `postgres` perdait `BYPASSRLS`, ce n'est pas l'audit qui
+tomberait, c'est la création de recherche.
+
+Ce que `force` protégerait s'il opérait — une connexion directe sous le rôle
+propriétaire — n'existe pas via l'API : PostgREST se connecte en `authenticator`
+puis bascule en `anon`, `authenticated` ou `service_role`.
+
+Même décision, même raisonnement que le projet voisin `mister-miss-koh`
+(`docs/politiques-rls.md`).
+
+### Les tests
+
+`supabase/tests/*.test.sql` (pgTAP), exécutés par le workflow
+**Supabase tests** — pas sur le poste, dont le démon Docker ne démarre pas.
+
+```bash
+supabase start && supabase test db   # là où Docker fonctionne
+```
+
+Ils vérifient que les quatre chemins `security definer` du dépôt (`lh_audit`,
+les deux triggers d'audit, `lh_share_search`, `lh_list_shares`) écrivent et
+lisent **réellement** en rôle `authenticated`, en comptant les lignes : une
+lecture bloquée par la RLS ne lève pas d'erreur, elle rend zéro ligne.
 
 ## 8. Activer le mode Supabase au build (GitHub Pages)
 

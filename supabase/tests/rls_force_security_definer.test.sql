@@ -1,18 +1,18 @@
 -- ╔══════════════════════════════════════════════════════════════════════╗
 -- ║ Miss LookHouse — FORCE ROW LEVEL SECURITY × SECURITY DEFINER.         ║
 -- ║                                                                        ║
--- ║ CE QUE CE TEST TRANCHE. 0002 pose `force row level security` sur les   ║
--- ║ tables ET écrit dans `audit_logs` depuis des fonctions                 ║
--- ║ `security definer`. Les deux choix se contredisent en théorie :        ║
--- ║ `force` soumet le PROPRIÉTAIRE des tables aux politiques, et une       ║
--- ║ fonction `security definer` s'exécute justement sous ce propriétaire.  ║
--- ║ Or `audit_logs` n'a AUCUNE politique d'écriture.                       ║
+-- ║ D'OÙ VIENT CE TEST. 0002 posait `force row level security` sur les     ║
+-- ║ tables ET écrivait dans `audit_logs` depuis des fonctions              ║
+-- ║ `security definer` — deux choix contradictoires : `force` soumet le    ║
+-- ║ PROPRIÉTAIRE aux politiques, et une fonction `security definer`        ║
+-- ║ s'exécute justement sous ce propriétaire. Or `audit_logs` n'a AUCUNE   ║
+-- ║ politique d'écriture. Seul l'attribut BYPASSRLS du propriétaire        ║
+-- ║ sauvait la mise. 0012 a retiré `force` ; ce test veille.               ║
 -- ║                                                                        ║
--- ║ Sauf que l'attribut de rôle BYPASSRLS, s'il est présent, l'emporte sur ║
--- ║ `force`. Lequel des deux gagne ici ne se déduit pas — il s'observe.    ║
--- ║ Les `diag()` de la section 1 impriment les faits ; les assertions de   ║
--- ║ la section 3 vérifient le seul constat qui compte : la ligne d'audit   ║
--- ║ est-elle RÉELLEMENT écrite quand un utilisateur authentifié agit ?     ║
+-- ║ CE QU'IL GARDE. La section 2 épingle les DEUX faits dont dépend le     ║
+-- ║ reste : `enable` partout, `force` nulle part, et BYPASSRLS toujours    ║
+-- ║ porté par le propriétaire. La section 3 rejoue les quatre chemins      ║
+-- ║ `security definer` du dépôt en rôle `authenticated`.                   ║
 -- ║                                                                        ║
 -- ║ Le mode d'échec redouté n'est pas l'erreur : c'est le silence. Une     ║
 -- ║ lecture bloquée par la RLS ne lève rien, elle rend zéro ligne. On      ║
@@ -26,7 +26,7 @@ set search_path to public, extensions;
 
 begin;
 
-select plan(15);
+select plan(17);
 
 -- ── Deux comptes de test (rollback en fin de fichier) ─────────────────────
 insert into auth.users (id, instance_id, aud, role, email, created_at, updated_at)
@@ -66,13 +66,13 @@ select diag(
     join pg_roles r on r.oid = c.relowner
     where c.oid = 'public.audit_logs'::regclass
   )
-  || '   <<< true => FORCE est neutralisé'
+  || '   <<< true => c''est lui qui neutralisait FORCE'
 );
 
--- ATTENTION en lisant ce qui suit : en LOCAL, `postgres` est superutilisateur ;
--- en HÉBERGÉ, il ne l'est pas. Un superutilisateur contourne la RLS quoi qu'il
--- arrive — un test vert ici ne dit donc RIEN de l'hébergé tant que la ligne
--- `rolsuper` vaut true. Seul `rolbypassrls` se transpose.
+-- Mesuré à false le 2026-09-04, et c'est ce qui rend le reste transposable :
+-- un superutilisateur contournerait la RLS quoi qu'il arrive, et le vert local
+-- ne dirait alors rien de l'hébergé. Ici le rôle local n'en est pas un — c'est
+-- donc bien BYPASSRLS qui opère, des deux côtés.
 select diag(
   'rolsuper(ce propriétaire)         : '
   || (
@@ -81,7 +81,7 @@ select diag(
     join pg_roles r on r.oid = c.relowner
     where c.oid = 'public.audit_logs'::regclass
   )
-  || '   <<< true => le vert local ne prouve rien pour l''hébergé'
+  || '   <<< true annulerait la portée du test'
 );
 
 select diag(
@@ -106,11 +106,41 @@ select diag(
 );
 
 -- ╔══════════════════════════════════════════════════════════════════════╗
--- ║ 2. L'état du schéma : la contradiction est-elle bien présente ?       ║
+-- ║ 2. L'état du schéma, une fois 0012 passée.                            ║
 -- ╚══════════════════════════════════════════════════════════════════════╝
+select is(
+  (
+    select count(*)::int
+    from pg_class c
+    join pg_namespace ns on ns.oid = c.relnamespace
+    where ns.nspname = 'public' and c.relkind = 'r' and c.relforcerowsecurity
+  ),
+  0,
+  '0012 a retiré FORCE de toutes les tables de public'
+);
+
+select is(
+  (
+    select count(*)::int
+    from pg_class c
+    join pg_namespace ns on ns.oid = c.relnamespace
+    where ns.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity
+  ),
+  0,
+  '... sans jamais retirer `enable` : aucune table de public n''est ouverte'
+);
+
+-- Le fait mesuré qui rendait `force` inerte. On l'épingle : s'il bascule un
+-- jour, c'est ici qu'on l'apprendra — et non par une création de recherche
+-- qui échoue en production.
 select ok(
-  (select relforcerowsecurity from pg_class where oid = 'public.audit_logs'::regclass),
-  '0002 pose bien FORCE ROW LEVEL SECURITY sur audit_logs'
+  (
+    select r.rolbypassrls
+    from pg_class c
+    join pg_roles r on r.oid = c.relowner
+    where c.oid = 'public.audit_logs'::regclass
+  ),
+  'le propriétaire des tables porte BYPASSRLS (ce qui neutralisait FORCE)'
 );
 
 select ok(

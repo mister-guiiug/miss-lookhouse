@@ -61,11 +61,13 @@ reset role;
 -- ── 1. Sans BYPASSRLS : FORCE s'applique au DEFINER ───────────────────────
 set role lh_probe_caller;
 
+-- Tous les arguments sont castés : `throws_ok` a des surcharges (text, int4…)
+-- que des littéraux `unknown` ne suffisent pas à départager.
 select throws_ok(
-  $$select lh_probe_write('sous force')$$,
-  '42501',
+  $$select lh_probe_write('sous force')$$::text,
+  '42501'::text,
   null::text,
-  'FORCE soumet la fonction SECURITY DEFINER aux politiques : appel REFUSÉ'
+  'FORCE soumet la fonction SECURITY DEFINER aux politiques : appel REFUSÉ'::text
 );
 
 reset role;
@@ -104,10 +106,10 @@ alter role lh_probe_owner nobypassrls;
 set role lh_probe_owner;
 
 select throws_ok(
-  $$insert into lh_probe_audit (note) values ('en direct')$$,
-  '42501',
+  $$insert into lh_probe_audit (note) values ('en direct')$$::text,
+  '42501'::text,
   null::text,
-  'FORCE bloque aussi le propriétaire en écriture DIRECTE — son seul apport réel'
+  'FORCE bloque aussi le propriétaire en écriture DIRECTE — son seul apport réel'::text
 );
 
 reset role;
