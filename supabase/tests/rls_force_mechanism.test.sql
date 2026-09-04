@@ -52,6 +52,24 @@ grant lh_probe_caller to current_user;
 grant create, usage on schema public to lh_probe_owner;
 grant usage on schema public to lh_probe_caller;
 
+-- Les assertions qui suivent s'exécutent SOUS ces rôles. Sans USAGE sur le
+-- schéma de pgTAP, ses fonctions leur sont invisibles — et PostgreSQL le dit
+-- comme si elles n'existaient pas (« function is(...) does not exist »), ce
+-- qui envoie chercher un problème de surcharge là où il n'y a qu'un droit
+-- manquant. Le schéma est résolu, pas supposé : `anon` et `authenticated` ont
+-- ce droit d'origine, un rôle créé à la main ne l'a pas.
+do $$
+declare
+  s text;
+begin
+  select n.nspname into s
+  from pg_extension e
+  join pg_namespace n on n.oid = e.extnamespace
+  where e.extname = 'pgtap';
+
+  execute format('grant usage on schema %I to lh_probe_owner, lh_probe_caller', s);
+end $$;
+
 select ok(
   not rolsuper and not rolbypassrls,
   'le propriétaire témoin n''a ni SUPERUSER ni BYPASSRLS'
@@ -97,15 +115,15 @@ set role lh_probe_caller;
 select is(
   lh_probe_try($$select lh_probe_write_a('sous force')$$),
   '42501'::text,
-  'FORCE soumet la fonction SECURITY DEFINER aux politiques : appel REFUSÉ'
+  'FORCE soumet la fonction SECURITY DEFINER aux politiques : appel REFUSÉ'::text
 );
 
 reset role;
 
 select is(
   (select count(*)::int from lh_probe_a),
-  0,
-  '... et rien n''est écrit'
+  0::int,
+  '... et rien n''est écrit'::text
 );
 
 -- ── 2. BYPASSRLS l'emporte sur FORCE ──────────────────────────────────────
@@ -114,15 +132,15 @@ set role lh_probe_caller;
 select is(
   lh_probe_try($$select lh_probe_write_b('avec bypassrls')$$),
   'aucune erreur'::text,
-  'même table, même fonction, propriétaire porteur de BYPASSRLS : ça passe'
+  'même table, même fonction, propriétaire porteur de BYPASSRLS : ça passe'::text
 );
 
 reset role;
 
 select is(
   (select count(*)::int from lh_probe_b),
-  1,
-  '... et la ligne est écrite — BYPASSRLS l''emporte sur FORCE'
+  1::int,
+  '... et la ligne est écrite — BYPASSRLS l''emporte sur FORCE'::text
 );
 
 -- ── 3. Ce que FORCE protégeait vraiment : la connexion directe ────────────
@@ -135,7 +153,7 @@ set role lh_probe_owner;
 select is(
   lh_probe_try($$insert into lh_probe_a (note) values ('en direct')$$),
   '42501'::text,
-  'FORCE bloque aussi le propriétaire en écriture DIRECTE — son seul apport réel'
+  'FORCE bloque aussi le propriétaire en écriture DIRECTE — son seul apport réel'::text
 );
 
 reset role;
