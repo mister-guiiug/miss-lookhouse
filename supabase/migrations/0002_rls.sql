@@ -10,7 +10,11 @@
 -- ║ jamais le serveur.                                                     ║
 -- ╚══════════════════════════════════════════════════════════════════════╝
 
--- ── Helper : audit append-only via SECURITY DEFINER (contourne la RLS) ────
+-- ── Helper : audit append-only via SECURITY DEFINER ───────────────────────
+-- Ce commentaire affirmait « contourne la RLS ». C'est le rôle propriétaire
+-- (postgres) et son attribut BYPASSRLS qui franchissent la RLS, PAS le
+-- SECURITY DEFINER : sous le `force` posé plus bas, il ne contournerait rien.
+-- La contradiction est mesurée et levée par 0012_rls_no_force.sql.
 create or replace function lh_audit(
   p_action text, p_target_type text, p_target_id text, p_summary text
 ) returns void language plpgsql security definer set search_path = public as $$
@@ -20,6 +24,10 @@ begin
 end $$;
 
 -- ── Activation + forçage de la RLS sur TOUTES les tables ──────────────────
+-- ⚠️ Le `force` de la boucle ci-dessous est RETIRÉ par 0012 : il ne
+-- protégeait rien (le propriétaire le contourne via BYPASSRLS) et rendait
+-- l'app dépendante de cet attribut. Migration forward-only, donc l'ordre
+-- reste 0002 puis 0012 ; le `enable`, lui, est bien définitif.
 do $$
 declare t text;
 begin

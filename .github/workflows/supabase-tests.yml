@@ -1,0 +1,56 @@
+# Tests pgTAP du schéma (RLS, SECURITY DEFINER) sur une pile Supabase locale.
+#
+# POURQUOI CE WORKFLOW EXISTE. Le poste de développement n'a pas de démon
+# Docker qui démarre : `supabase start` y est impossible, et les choix de
+# sécurité de 0002 n'avaient donc JAMAIS été exécutés — seulement relus. La CI
+# est le seul endroit où ces tests tournent pour de vrai.
+#
+# Aucun secret : tout se passe dans une base jetable du runner. Rien ne touche
+# le projet hébergé (voir `supabase-migrations.yml` pour ça).
+name: Supabase tests
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/tests/**'
+      - '.github/workflows/supabase-tests.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/tests/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pgtap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Postgres + GoTrue seulement : les tests écrivent dans `auth.users` en
+      # SQL, ils n'ont besoin ni de l'API REST, ni du studio, ni du stockage.
+      - name: Démarrer la base locale
+        run: |
+          supabase start \
+            -x realtime,storage-api,imgproxy,studio,edge-runtime \
+            -x logflare,vector,supavisor,mailpit,postgres-meta \
+            -x postgrest,kong
+
+      # Les migrations viennent d'être appliquées par `supabase start`. Si 0003
+      # (qui insère dans `sources`, table en RLS forcée SANS politique
+      # d'écriture) passait ici mais échouait en hébergé, c'est que le rôle
+      # local contourne la RLS — d'où les diagnostics imprimés par les tests.
+      - name: Tests pgTAP
+        run: supabase test db
+
+      - name: Journaux de la base en cas d'échec
+        if: failure()
+        run: docker logs "supabase_db_miss-lookhouse" --tail 200 || docker ps -a
