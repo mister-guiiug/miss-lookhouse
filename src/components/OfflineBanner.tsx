@@ -1,4 +1,4 @@
-import { ConnectionBanner } from '@mister-guiiug/dev-wpa-config/react/connection-banner';
+import { ConnectionBanner } from '@mister-guiiug/dev-pwa-config/react/connection-banner';
 import { IS_SUPABASE } from '../backend/config';
 import { offlineLabel } from './offlineLabel';
 

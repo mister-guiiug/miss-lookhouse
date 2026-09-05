@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   getDefaultLocale,
   setDefaultLocale,
-} from '@mister-guiiug/dev-wpa-config/format';
+} from '@mister-guiiug/dev-pwa-config/format';
 import {
   formatDate,
   formatPrice,

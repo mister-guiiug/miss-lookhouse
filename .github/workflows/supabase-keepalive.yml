@@ -15,7 +15,7 @@ on:
 
 jobs:
   keepalive:
-    uses: mister-guiiug/dev-wpa-config/.github/workflows/pwa-supabase-keepalive.yml@v3
+    uses: mister-guiiug/dev-pwa-config/.github/workflows/pwa-supabase-keepalive.yml@v4
     # Nommés, pas hérités : le workflow déclare exactement ces deux secrets.
     # `inherit` lui donnerait accès à tout le trousseau du dépôt.
     secrets:

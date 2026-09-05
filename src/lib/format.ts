@@ -3,7 +3,7 @@
  * un nombre de pièces, un prix au mètre carré.
  *
  * CE QUI N'EST PLUS ICI. Le rendu du NOMBRE et de la DATE passe par
- * `@mister-guiiug/dev-wpa-config/format`. Ce fichier construisait un
+ * `@mister-guiiug/dev-pwa-config/format`. Ce fichier construisait un
  * `Intl.NumberFormat('fr-FR', …)` au niveau module et appelait
  * `toLocaleDateString('fr-FR', …)` : trois littéraux `'fr-FR'` recopiés.
  *
@@ -20,7 +20,7 @@ import {
   formatDate as formatDateIntl,
   formatNumber,
   formatRelativeTime,
-} from '@mister-guiiug/dev-wpa-config/format';
+} from '@mister-guiiug/dev-pwa-config/format';
 
 /**
  * Un prix de bien s'écrit sans centimes : « 249 000 € », pas « 249 000,00 € ».

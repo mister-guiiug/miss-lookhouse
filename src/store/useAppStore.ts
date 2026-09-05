@@ -28,7 +28,7 @@ import { emitSync } from '../backend/syncBus';
 import { IS_SUPABASE } from '../backend/config';
 
 // LE THÈME N'EST PLUS ICI. Il vit dans `ThemeProvider`
-// (`@mister-guiiug/dev-wpa-config/react/theme-provider`), seul écrivain de
+// (`@mister-guiiug/dev-pwa-config/react/theme-provider`), seul écrivain de
 // `data-theme` et de la balise `theme-color`. La clé historique `lh_theme` est
 // reprise par `legacyKeys` dans `App.tsx`, donc rien n'est perdu.
 interface AppState {

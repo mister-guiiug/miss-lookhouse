@@ -1,8 +1,8 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Monitor, Moon, Sun } from 'lucide-react';
-import { ThemeProvider } from '@mister-guiiug/dev-wpa-config/react/theme-provider';
-import { IconsProvider } from '@mister-guiiug/dev-wpa-config/react/icons-context';
+import { ThemeProvider } from '@mister-guiiug/dev-pwa-config/react/theme-provider';
+import { IconsProvider } from '@mister-guiiug/dev-pwa-config/react/icons-context';
 import { useAppStore } from './store/useAppStore';
 import { THEME_COLOR, THEME_LEGACY_KEYS, THEME_STORAGE_KEY } from './theme';
 import { AuthProvider } from './auth/useAuth';

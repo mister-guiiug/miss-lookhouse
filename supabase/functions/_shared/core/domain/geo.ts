@@ -5,7 +5,7 @@
  * Géométrie pure : distance haversine (mètres), appartenance à un rayon, et
  * test point-dans-polygone (ray casting) pour les zones personnalisées.
  *
- * POURQUOI PAS `@mister-guiiug/dev-wpa-config/geo`. Le socle publie bien
+ * POURQUOI PAS `@mister-guiiug/dev-pwa-config/geo`. Le socle publie bien
  * `distanceKm` — même formule, même rayon terrestre — mais CE FICHIER n'a pas
  * le droit d'avoir de dépendance. `scripts/build-edge-core.mjs` recopie tout
  * `src/domain/` dans `supabase/functions/_shared/core`, qui tourne sous **Deno**

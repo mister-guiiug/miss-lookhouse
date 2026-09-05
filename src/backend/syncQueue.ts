@@ -1,6 +1,6 @@
 /**
  * File de synchronisation PERSISTANTE (offline-first) — désormais fournie par
- * le socle (`dev-wpa-config/sync-queue`). Ce module ne garde que le branchement
+ * le socle (`dev-pwa-config/sync-queue`). Ce module ne garde que le branchement
  * app : mêmes clés localStorage que la copie locale historique, clé d'entité
  * (`intentKey`) pour la fusion, et migration ponctuelle du format. L'adoption
  * REND à la file ce que la copie (« Inspiré du syncQueue de miss-uwh ») avait
@@ -12,8 +12,8 @@ import {
   type SyncQueue,
   type SyncQueueEntry,
   type SyncQueueOptions,
-} from '@mister-guiiug/dev-wpa-config/sync-queue';
-import { createStore } from '@mister-guiiug/dev-wpa-config/storage';
+} from '@mister-guiiug/dev-pwa-config/sync-queue';
+import { createStore } from '@mister-guiiug/dev-pwa-config/storage';
 import type { SyncIntent } from './syncBus';
 
 /**

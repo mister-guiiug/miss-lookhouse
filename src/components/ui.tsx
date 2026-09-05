@@ -1,6 +1,6 @@
-import { Badge } from '@mister-guiiug/dev-wpa-config/react/badge';
-import type { BadgeTone } from '@mister-guiiug/dev-wpa-config/react/badge';
-import { Sparkline as DwcSparkline } from '@mister-guiiug/dev-wpa-config/react/sparkline';
+import { Badge } from '@mister-guiiug/dev-pwa-config/react/badge';
+import type { BadgeTone } from '@mister-guiiug/dev-pwa-config/react/badge';
+import { Sparkline as DwcSparkline } from '@mister-guiiug/dev-pwa-config/react/sparkline';
 import type { SimilarityBucket } from '../domain/types';
 import type { UserStatus, PricePoint } from '../store/types';
 import { formatPrice } from '../lib/format';
