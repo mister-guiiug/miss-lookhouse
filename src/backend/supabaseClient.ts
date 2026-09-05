@@ -1,12 +1,12 @@
 /**
- * Client Supabase via la fabrique du socle (`dev-wpa-config/supabase-client`) :
+ * Client Supabase via la fabrique du socle (`dev-pwa-config/supabase-client`) :
  * rien ne s'exécute à l'import, le SDK n'est chargé (import dynamique) qu'au
  * premier `getClient()`. La clé `anon` est PUBLIQUE et inoffensive : toute la
  * sécurité est dans la RLS côté serveur. Aucun secret (`service_role`, PAT) ne
  * doit jamais transiter par le client.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createSupabaseClientFactory } from '@mister-guiiug/dev-wpa-config/supabase-client';
+import { createSupabaseClientFactory } from '@mister-guiiug/dev-pwa-config/supabase-client';
 import { IS_SUPABASE } from './config';
 
 /** La fabrique socle : `isConfigured()`, `missing()`, `getClient()`, `reset()`. */

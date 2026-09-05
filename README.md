@@ -13,7 +13,7 @@ manuellement et recevez des **notifications** pertinentes.
 > documentées dans le référentiel `sources` (migration `0003`).
 
 Membre de la famille de PWA **mister-guiiug** (React 19 + Vite 8 + Tailwind v4 +
-Zustand + Zod, config partagée `@mister-guiiug/dev-wpa-config`).
+Zustand + Zod, config partagée `@mister-guiiug/dev-pwa-config`).
 
 ---
 

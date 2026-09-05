@@ -6,7 +6,7 @@
  * Le parsing de la réponse est PUR (testable sans réseau) ; `geocode` n'ajoute
  * que l'appel `fetch`. Base configurable via `VITE_GEOCODER_URL`.
  */
-import { isValidCoordinates } from '@mister-guiiug/dev-wpa-config/geo';
+import { isValidCoordinates } from '@mister-guiiug/dev-pwa-config/geo';
 
 const BASE =
   import.meta.env.VITE_GEOCODER_URL ?? 'https://api-adresse.data.gouv.fr';

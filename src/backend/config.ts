@@ -6,7 +6,7 @@
  * (`supabaseConfig`, même `missingConfig` que la fabrique de client) : une
  * variable vide ou blanche est absente.
  */
-import { supabaseConfig } from '@mister-guiiug/dev-wpa-config/supabase-client';
+import { supabaseConfig } from '@mister-guiiug/dev-pwa-config/supabase-client';
 
 const declared = (import.meta.env.VITE_BACKEND ?? 'local') as
   | 'local'

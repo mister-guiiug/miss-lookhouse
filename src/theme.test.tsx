@@ -18,8 +18,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   ThemeProvider,
   useThemeContext,
-} from '@mister-guiiug/dev-wpa-config/react/theme-provider';
-import { ThemeToggle } from '@mister-guiiug/dev-wpa-config/react/theme-toggle';
+} from '@mister-guiiug/dev-pwa-config/react/theme-provider';
+import { ThemeToggle } from '@mister-guiiug/dev-pwa-config/react/theme-toggle';
 import { THEME_COLOR, THEME_LEGACY_KEYS, THEME_STORAGE_KEY } from './theme';
 
 afterEach(() => {

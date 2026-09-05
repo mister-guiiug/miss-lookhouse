@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { Home, Search, List, CopyCheck, Bell } from 'lucide-react';
-import { BottomNav as DwcBottomNav } from '@mister-guiiug/dev-wpa-config/react/bottom-nav';
+import { BottomNav as DwcBottomNav } from '@mister-guiiug/dev-pwa-config/react/bottom-nav';
 import { useAppStore } from '../store/useAppStore';
 
 const items = [

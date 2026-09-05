@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Telescope } from 'lucide-react';
-import { useActionGuard } from '@mister-guiiug/dev-wpa-config/react/use-action-guard';
+import { useActionGuard } from '@mister-guiiug/dev-pwa-config/react/use-action-guard';
 import { useAuth } from '../../auth/useAuth';
 
 /** Connexion / inscription par e-mail + mot de passe (mode Supabase). */

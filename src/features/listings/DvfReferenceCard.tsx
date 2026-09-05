@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { TrendingUp } from 'lucide-react';
-import { formatNumber } from '@mister-guiiug/dev-wpa-config/format';
+import { formatNumber } from '@mister-guiiug/dev-pwa-config/format';
 import { IS_SUPABASE } from '../../backend/config';
 import {
   getDvfReference,

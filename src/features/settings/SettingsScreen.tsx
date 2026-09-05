@@ -1,6 +1,6 @@
 import { Download, LogOut, Mail, RotateCcw, Rss, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useThemeContext } from '@mister-guiiug/dev-wpa-config/react/theme-provider';
+import { useThemeContext } from '@mister-guiiug/dev-pwa-config/react/theme-provider';
 import { PushToggle } from './PushToggle';
 import { useAppStore } from '../../store/useAppStore';
 import { BACKEND, IS_SUPABASE } from '../../backend/config';
@@ -8,7 +8,7 @@ import { useAuth } from '../../auth/useAuth';
 import {
   SPONSOR_URL,
   repoUrl,
-} from '@mister-guiiug/dev-wpa-config/apps-catalog';
+} from '@mister-guiiug/dev-pwa-config/apps-catalog';
 
 declare const __APP_VERSION__: string;
 

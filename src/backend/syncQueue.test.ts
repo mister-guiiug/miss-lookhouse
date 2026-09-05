@@ -1,6 +1,6 @@
 /**
  * La logique de file (drain, rejeu, lettres mortes, plafond) est celle du
- * socle, testée dans dev-wpa-config. Ici, on ne teste que le BRANCHEMENT app :
+ * socle, testée dans dev-pwa-config. Ici, on ne teste que le BRANCHEMENT app :
  * reprise des clés localStorage historiques, migration ponctuelle de l'ancien
  * format (`intent` → `payload` + `key`) — aucune écriture en attente perdue —
  * et clé d'entité pour la fusion.

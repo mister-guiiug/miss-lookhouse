@@ -1,6 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import { Telescope } from 'lucide-react';
-import { ThemeToggle } from '@mister-guiiug/dev-wpa-config/react/theme-toggle';
+import { ThemeToggle } from '@mister-guiiug/dev-pwa-config/react/theme-toggle';
 import { BottomNav } from './BottomNav';
 import { Footer } from './Footer';
 import { HeaderMenu } from './HeaderMenu';
