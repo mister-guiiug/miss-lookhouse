@@ -2,6 +2,7 @@ import { Download, LogOut, Mail, RotateCcw, Rss, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useThemeContext } from '@mister-guiiug/dev-pwa-config/react/theme-provider';
 import { PushToggle } from './PushToggle';
+import { DangerZone } from './DangerZone';
 import { useAppStore } from '../../store/useAppStore';
 import { BACKEND, IS_SUPABASE } from '../../backend/config';
 import { useAuth } from '../../auth/useAuth';
@@ -169,6 +170,11 @@ export function SettingsScreen() {
           </a>
         </div>
       </div>
+
+      {/* EN DERNIER, et séparée du reste : on ne tombe pas dessus en cherchant
+          autre chose. Elle ne s'affiche qu'avec un compte — en mode local il
+          n'y en a pas, et « Réinitialiser » efface déjà tout. */}
+      <DangerZone />
     </>
   );
 }

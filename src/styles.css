@@ -197,6 +197,25 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+/* Bouton destructeur : contour et texte en `--danger`, pas un aplat rouge —
+   le fond plein passe sous 4,5:1 avec du blanc dans le thème sombre. */
+.btn-danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.btn-danger[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Zone dangereuse (suppression de compte) ── */
+.danger-zone {
+  border-color: var(--danger);
+}
+.danger-text {
+  color: var(--danger);
+  font-size: 0.84rem;
+}
 input,
 select,
 textarea {
