@@ -129,15 +129,11 @@ body {
 }
 
 /* ── Bottom nav (socle `react/bottom-nav`, habillé par components.css) ──
-   Ne restent ici que les écarts VOULUS par rapport à la base partagée :
-   barre FIXÉE au bas de l'écran (le shell lui réserve 4.5rem de padding)
-   et fond translucide flouté, identité de l'app depuis l'origine. */
+   Ne reste ici que l'écart VOULU par rapport à la base partagée : le fond
+   translucide flouté, identité de l'app depuis l'origine. La barre est
+   collée au bas de l'écran par `placement="fixed"` (socle 4.3) ; le shell
+   lui réserve 4.5rem de padding. */
 [data-dwc='bottom-nav'] {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 20;
   background: color-mix(in srgb, var(--surface) 94%, transparent);
   backdrop-filter: blur(10px);
 }

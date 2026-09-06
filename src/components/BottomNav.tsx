@@ -24,6 +24,9 @@ export function BottomNav() {
 
   return (
     <DwcBottomNav
+      // Collée au bas de la fenêtre par le socle (4.3) : la règle CSS que
+      // l'app portait pour ça est partie, il ne reste que son fond flouté.
+      placement="fixed"
       currentPath={pathname}
       items={items.map(({ href, label, Icon, end }) => ({
         href,
