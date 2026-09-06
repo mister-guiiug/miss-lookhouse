@@ -14,6 +14,8 @@ export function Footer() {
   return (
     <div className="footer">
       <AppFooter
+        version
+        issues
         repoUrl={repoUrl('miss-lookhouse')}
         sponsorUrl={SPONSOR_URL}
         sourceLabel="Code source"
