@@ -31,9 +31,71 @@ import { IS_SUPABASE } from '../backend/config';
 // (`@mister-guiiug/dev-pwa-config/react/theme-provider`), seul écrivain de
 // `data-theme` et de la balise `theme-color`. La clé historique `lh_theme` est
 // reprise par `legacyKeys` dans `App.tsx`, donc rien n'est perdu.
+/**
+ * Délai pendant lequel une suppression de recherche reste rattrapable.
+ * Huit secondes : le temps de lire « supprimée » et de comprendre qu'on ne
+ * voulait pas ça, sans laisser l'app dans un état indécis.
+ */
+export const UNDO_DELETE_MS = 8000;
+
+/**
+ * Les minuteries de suppression vivent au niveau du MODULE, pas d'un
+ * composant : quitter l'écran « Recherches » ne doit ni annuler ni précipiter
+ * une suppression en cours. Le store est le seul à les poser et à les lever.
+ */
+const undoTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function clearUndoTimer(id: string): void {
+  const timer = undoTimers.get(id);
+  if (timer !== undefined) {
+    clearTimeout(timer);
+    undoTimers.delete(id);
+  }
+}
+
+function clearAllUndoTimers(): void {
+  for (const timer of undoTimers.values()) clearTimeout(timer);
+  undoTimers.clear();
+}
+
+/**
+ * Ce que les écrans doivent montrer : le magasin MOINS les suppressions en
+ * sursis.
+ *
+ * Fonction PURE, appelée dans le corps des composants — surtout pas dans un
+ * sélecteur zustand : un `filter` y rendrait une référence neuve à chaque
+ * appel, donc une boucle `useSyncExternalStore`. Les composants sélectionnent
+ * `data.searches` et `pendingDeletions` séparément, puis appellent ceci.
+ *
+ * UN SEUL ENDROIT, parce que quatre écrans LISTENT les recherches :
+ * « Recherches », la vue d'ensemble (le compteur), l'import (le sélecteur) et
+ * la carte (les zones). Filtrer dans un seul d'entre eux laisserait une
+ * recherche « supprimée » choisissable ailleurs pendant huit secondes — on
+ * pourrait y rattacher un import qui partirait avec elle.
+ *
+ * L'écran d'ÉDITION n'est pas concerné : il ne liste rien, il résout un id
+ * d'URL. On n'y arrive plus par la liste, et le masquer ferait passer une
+ * modification pour une création.
+ */
+export function visibleSearches(
+  searches: LocalSearch[],
+  pendingDeletions: string[]
+): LocalSearch[] {
+  if (pendingDeletions.length === 0) return searches;
+  return searches.filter(s => !pendingDeletions.includes(s.id));
+}
+
 interface AppState {
   ready: boolean;
   data: AppData;
+  /**
+   * Recherches supprimées mais pas encore définitivement : elles sont encore
+   * dans `data.searches` (donc rien n'est perdu, ni localement ni sur le
+   * serveur), simplement masquées par les écrans. Non persisté : une session
+   * interrompue pendant le délai laisse la recherche intacte — le sens de la
+   * panne va du bon côté.
+   */
+  pendingDeletions: string[];
   init: () => void;
   hydrate: (data: AppData) => void;
   wipeLocal: () => void;
@@ -60,7 +122,12 @@ interface AppState {
   addSearch: (s: Omit<LocalSearch, 'id'>) => string;
   updateSearch: (id: string, patch: Partial<Omit<LocalSearch, 'id'>>) => void;
   setSearchActive: (id: string, active: boolean) => void;
+  /** Masque la recherche et arme le délai d'annulation. Rien n'est encore perdu. */
   deleteSearch: (id: string) => void;
+  /** Rend la recherche, avec tous ses critères — c'est le même objet. */
+  undoDeleteSearch: (id: string) => void;
+  /** Le délai a filé : la suppression devient réelle, et part au serveur. */
+  commitDeleteSearch: (id: string) => void;
   runSearchNow: (id: string) => void;
   resetDemo: () => void;
 }
@@ -98,6 +165,7 @@ function toCriteria(s: LocalSearch): SearchCriteria {
 export const useAppStore = create<AppState>()((set, get) => ({
   ready: false,
   data: emptyData(),
+  pendingDeletions: [],
 
   init: () => {
     if (get().ready) return;
@@ -428,13 +496,57 @@ export const useAppStore = create<AppState>()((set, get) => ({
     if (updated) emitSync({ kind: 'upsertSearch', search: updated });
   },
 
+  /**
+   * ANNULER PLUTÔT QUE CONFIRMER. Une `LocalSearch` porte des critères longs à
+   * ressaisir — nom, sources, centre et rayon, polygone, fourchettes de prix,
+   * de surface et de pièces, types de bien, mots-clés requis et exclus,
+   * fréquence. Une boîte « êtes-vous sûr ? » demandait cet effort à CHAQUE
+   * suppression pour n'éviter que la minorité d'erreurs ; huit secondes
+   * d'annulation les rattrapent toutes et ne coûtent rien au geste voulu.
+   *
+   * RIEN N'EST ENFILÉ AVANT L'EXPIRATION, et c'est le point qui décide de tout
+   * en mode compte. Enfiler l'intention tout de suite, puis la retirer à
+   * l'annulation, ne marche que si la file n'a pas encore drainé — or en ligne
+   * elle draine en quelques millisecondes. « Annuler » devrait alors RECRÉER la
+   * recherche sur le serveur, c'est-à-dire empiler une mutation contraire :
+   * exactement ce qu'on veut éviter. On diffère donc l'émission jusqu'au
+   * commit, et l'annulation n'a plus rien à défaire.
+   */
   deleteSearch: id => {
-    const { data } = get();
+    const { data, pendingDeletions } = get();
+    if (pendingDeletions.includes(id)) return;
+    if (!data.searches.some(s => s.id === id)) return;
+    set({ pendingDeletions: [...pendingDeletions, id] });
+    clearUndoTimer(id);
+    undoTimers.set(
+      id,
+      setTimeout(() => {
+        get().commitDeleteSearch(id);
+      }, UNDO_DELETE_MS)
+    );
+  },
+
+  undoDeleteSearch: id => {
+    clearUndoTimer(id);
+    const { pendingDeletions } = get();
+    if (!pendingDeletions.includes(id)) return;
+    set({ pendingDeletions: pendingDeletions.filter(x => x !== id) });
+  },
+
+  commitDeleteSearch: id => {
+    clearUndoTimer(id);
+    const { data, pendingDeletions } = get();
+    // Déjà annulée (ou déjà commitée) : ne rien faire. La minuterie et l'appel
+    // explicite peuvent se croiser, le commit doit rester idempotent.
+    if (!pendingDeletions.includes(id)) return;
     const nextData: AppData = {
       ...data,
       searches: data.searches.filter(s => s.id !== id),
     };
-    set({ data: nextData });
+    set({
+      data: nextData,
+      pendingDeletions: pendingDeletions.filter(x => x !== id),
+    });
     saveState(nextData);
     emitSync({ kind: 'deleteSearch', id });
   },
@@ -450,21 +562,28 @@ export const useAppStore = create<AppState>()((set, get) => ({
     saveState(nextData);
   },
 
+  // Les suppressions en sursis portent sur des identifiants du jeu PRÉCÉDENT :
+  // les garder au travers d'un remplacement de données masquerait une
+  // recherche du serveur qui porterait le même id, ou attendrait un commit
+  // sans objet. On repart de zéro à chaque hydratation.
   hydrate: data => {
-    set({ data });
+    clearAllUndoTimers();
+    set({ data, pendingDeletions: [] });
     saveState(data);
   },
 
   // Purge le miroir local (déconnexion / appareil partagé — RGPD).
   wipeLocal: () => {
+    clearAllUndoTimers();
     clearState();
-    set({ data: emptyData() });
+    set({ data: emptyData(), pendingDeletions: [] });
   },
 
   resetDemo: () => {
+    clearAllUndoTimers();
     clearState();
     const data = demoState();
     saveState(data);
-    set({ data });
+    set({ data, pendingDeletions: [] });
   },
 }));

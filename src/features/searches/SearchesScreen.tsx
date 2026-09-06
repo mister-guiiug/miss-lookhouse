@@ -1,12 +1,19 @@
 import { Link } from 'react-router-dom';
 import { Clock, Pencil, Plus, Trash2 } from 'lucide-react';
-import { useAppStore } from '../../store/useAppStore';
+import { useAppStore, visibleSearches } from '../../store/useAppStore';
 import { formatPrice } from '../../lib/format';
 
 export function SearchesScreen() {
   const searches = useAppStore(s => s.data.searches);
+  const pendingDeletions = useAppStore(s => s.pendingDeletions);
   const setSearchActive = useAppStore(s => s.setSearchActive);
   const deleteSearch = useAppStore(s => s.deleteSearch);
+
+  // Filtré ICI, pas dans le sélecteur : un `filter` dans un sélecteur rend une
+  // référence neuve à chaque appel (boucle `useSyncExternalStore`).
+  // Une recherche en sursis disparaît de la liste, mais reste dans le store —
+  // c'est ce qui permet de la rendre intacte huit secondes durant.
+  const visible = visibleSearches(searches, pendingDeletions);
 
   return (
     <>
@@ -21,12 +28,12 @@ export function SearchesScreen() {
         </Link>
       </div>
 
-      {searches.length === 0 ? (
+      {visible.length === 0 ? (
         <div className="empty">
           Aucune recherche. Créez-en une pour définir votre veille.
         </div>
       ) : (
-        searches.map(s => (
+        visible.map(s => (
           <div
             key={s.id}
             className="card"
@@ -85,18 +92,14 @@ export function SearchesScreen() {
                 >
                   <Pencil size={15} aria-hidden />
                 </Link>
+                {/* Plus de « êtes-vous sûr ? » : l'annulation REMPLACE la
+                    confirmation, elle ne s'y ajoute pas. Le geste part tout de
+                    suite, et se rattrape pendant huit secondes. */}
                 <button
                   className="btn"
                   style={{ padding: '0.35rem 0.6rem' }}
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        `Supprimer la recherche « ${s.name} » ?\n\nSes annonces resteront dans « Annonces » mais ne seront plus rattachées à une recherche (ni partagées).`
-                      )
-                    )
-                      deleteSearch(s.id);
-                  }}
-                  aria-label="Supprimer"
+                  onClick={() => deleteSearch(s.id)}
+                  aria-label={`Supprimer la recherche « ${s.name} »`}
                 >
                   <Trash2 size={15} aria-hidden />
                 </button>

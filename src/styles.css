@@ -197,6 +197,25 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+/* Bouton destructeur : contour et texte en `--danger`, pas un aplat rouge —
+   le fond plein passe sous 4,5:1 avec du blanc dans le thème sombre. */
+.btn-danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+.btn-danger[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Zone dangereuse (suppression de compte) ── */
+.danger-zone {
+  border-color: var(--danger);
+}
+.danger-text {
+  color: var(--danger);
+  font-size: 0.84rem;
+}
 input,
 select,
 textarea {
@@ -363,6 +382,30 @@ label {
   max-width: 720px;
   margin: 0.5rem auto 0;
   width: calc(100% - 2rem);
+}
+
+/* Les notifications du socle sont fixées à `bottom: 0` — donc SOUS la barre
+   basse, qui est fixe elle aussi. On les remonte au-dessus d'elle ET du
+   bandeau de synchro (le même 4,5 rem, plus la hauteur du bandeau). Règle non
+   « layered » : elle l'emporte sur `components.css`, tout en @layer. */
+[data-dwc='toast-viewport'] {
+  bottom: calc(6.4rem + env(safe-area-inset-bottom));
+  padding-bottom: 0;
+}
+
+/* « Recherche supprimée · Annuler » : le libellé cède la place au bouton, qui
+   ne se comprime jamais — c'est lui qu'on vient chercher. */
+.undo-toast {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  justify-content: space-between;
+  width: 100%;
+}
+.undo-toast .btn {
+  flex: none;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.82rem;
 }
 
 .sync-banner {
