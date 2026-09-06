@@ -3,6 +3,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Monitor, Moon, Sun } from 'lucide-react';
 import { ThemeProvider } from '@mister-guiiug/dev-pwa-config/react/theme-provider';
 import { IconsProvider } from '@mister-guiiug/dev-pwa-config/react/icons-context';
+import { ToastProvider } from '@mister-guiiug/dev-pwa-config/react/toast';
 import { useAppStore } from './store/useAppStore';
 import { THEME_COLOR, THEME_LEGACY_KEYS, THEME_STORAGE_KEY } from './theme';
 import { AuthProvider } from './auth/useAuth';
@@ -13,6 +14,7 @@ import { OfflineBanner } from './components/OfflineBanner';
 import { DashboardScreen } from './features/dashboard/DashboardScreen';
 import { SearchesScreen } from './features/searches/SearchesScreen';
 import { SearchEditScreen } from './features/searches/SearchEditScreen';
+import { UndoDeleteToasts } from './features/searches/UndoDeleteToasts';
 import { ListingsScreen } from './features/listings/ListingsScreen';
 import { ListingDetailScreen } from './features/listings/ListingDetailScreen';
 import { SimilarScreen } from './features/similar/SimilarScreen';
@@ -30,6 +32,9 @@ function RoutedApp() {
   return (
     <>
       <SupabaseSync />
+      {/* HORS du routeur : une suppression s'annule aussi depuis un autre
+          écran, et le compte à rebours ne s'arrête pas quand on navigue. */}
+      <UndoDeleteToasts />
       <HashRouter>
         <Routes>
           <Route element={<Layout />}>
@@ -96,21 +101,27 @@ export function App() {
     >
       {/* Le socle dessine ses propres SVG ; l'app est sous lucide partout. */}
       <IconsProvider icons={{ light: Sun, dark: Moon, system: Monitor }}>
-        <AuthProvider>
-          {/* AU-DESSUS de la garde, pas dedans : l'écran de connexion est le
-              premier endroit où la coupure fait mal, et c'est justement celui
-              qui n'affichait rien. */}
-          <OfflineBanner />
-          <AuthGate>
-            {ready ? (
-              <RoutedApp />
-            ) : (
-              <div className="empty" style={{ paddingTop: '4rem' }}>
-                Chargement…
-              </div>
-            )}
-          </AuthGate>
-        </AuthProvider>
+        {/* Le fournisseur de notifications monte lui-même sa zone d'affichage
+            (deux régions vivantes permanentes). Il enveloppe l'app entière :
+            le message « supprimée · Annuler » doit survivre au changement
+            d'écran. */}
+        <ToastProvider>
+          <AuthProvider>
+            {/* AU-DESSUS de la garde, pas dedans : l'écran de connexion est le
+                premier endroit où la coupure fait mal, et c'est justement celui
+                qui n'affichait rien. */}
+            <OfflineBanner />
+            <AuthGate>
+              {ready ? (
+                <RoutedApp />
+              ) : (
+                <div className="empty" style={{ paddingTop: '4rem' }}>
+                  Chargement…
+                </div>
+              )}
+            </AuthGate>
+          </AuthProvider>
+        </ToastProvider>
       </IconsProvider>
     </ThemeProvider>
   );

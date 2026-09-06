@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Bookmark, Info, Upload } from 'lucide-react';
-import { useAppStore } from '../../store/useAppStore';
+import { useAppStore, visibleSearches } from '../../store/useAppStore';
 import { BOOKMARKLET_HREF, BOOKMARKLET_SRC } from '../../ingestion/bookmarklet';
 
 const EXAMPLE = JSON.stringify(
@@ -26,8 +26,12 @@ const EXAMPLE = JSON.stringify(
 );
 
 export function ImportScreen() {
-  const searches = useAppStore(s => s.data.searches);
+  const allSearches = useAppStore(s => s.data.searches);
+  const pendingDeletions = useAppStore(s => s.pendingDeletions);
   const importPayload = useAppStore(s => s.importPayload);
+  // Rattacher un import à une recherche qu'on vient de supprimer partirait avec
+  // elle huit secondes plus tard : elle ne doit pas être proposée.
+  const searches = visibleSearches(allSearches, pendingDeletions);
 
   const [payload, setPayload] = useState('');
   const [searchId, setSearchId] = useState('');

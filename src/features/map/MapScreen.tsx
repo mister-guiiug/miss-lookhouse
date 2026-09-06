@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useAppStore } from '../../store/useAppStore';
+import { useAppStore, visibleSearches } from '../../store/useAppStore';
 import { formatPrice } from '../../lib/format';
 
 // Couleurs fixes (les tuiles sont claires quel que soit le thème de l'app).
@@ -26,12 +26,19 @@ function esc(s: unknown): string {
  */
 export function MapScreen() {
   const listings = useAppStore(s => s.data.listings);
-  const searches = useAppStore(s => s.data.searches);
+  const allSearches = useAppStore(s => s.data.searches);
+  const pendingDeletions = useAppStore(s => s.pendingDeletions);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const geoListings = useMemo(
     () => listings.filter(l => l.lat != null && l.lng != null),
     [listings]
+  );
+  // La zone d'une recherche en sursis ne doit plus être dessinée : le cercle
+  // survivrait à la disparition de la recherche dans la liste.
+  const searches = useMemo(
+    () => visibleSearches(allSearches, pendingDeletions),
+    [allSearches, pendingDeletions]
   );
   const zones = useMemo(
     () =>

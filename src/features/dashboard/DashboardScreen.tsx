@@ -7,18 +7,23 @@ import {
   Search,
   Upload,
 } from 'lucide-react';
-import { useAppStore } from '../../store/useAppStore';
+import { useAppStore, visibleSearches } from '../../store/useAppStore';
 import { formatPrice, timeAgo } from '../../lib/format';
 import { ScoreBadge, SourceBadge } from '../../components/ui';
 
 export function DashboardScreen() {
   const listings = useAppStore(s => s.data.listings);
   const searches = useAppStore(s => s.data.searches);
+  const pendingDeletions = useAppStore(s => s.pendingDeletions);
   const notifications = useAppStore(s => s.data.notifications);
   const similarities = useAppStore(s => s.data.similarities);
 
   const unread = notifications.filter(n => !n.readAt).length;
-  const activeSearches = searches.filter(s => s.active).length;
+  // Une recherche en sursis ne compte plus : elle a disparu de « Recherches »,
+  // la voir encore ici donnerait deux chiffres pour une seule vérité.
+  const activeSearches = visibleSearches(searches, pendingDeletions).filter(
+    s => s.active
+  ).length;
   const dupes = similarities.filter(
     s => s.bucket === 'doublon_exact' || s.bucket === 'probable_identique'
   ).length;
