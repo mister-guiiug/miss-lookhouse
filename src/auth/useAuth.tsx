@@ -26,6 +26,14 @@ export interface AuthValue {
     email: string,
     password: string
   ) => Promise<{ error: string | null; needsConfirmation: boolean }>;
+  /**
+   * Un lien à usage unique, par e-mail : l'application ne voit passer aucun
+   * secret et n'en stocke aucun. C'est l'entrée par défaut depuis l'étape 5
+   * d'AMELIORATIONS.md ; le mot de passe reste possible, il n'est plus le
+   * défaut. Une adresse inconnue reçoit aussi son lien : c'est l'inscription
+   * sans mot de passe.
+   */
+  signInWithLink: (email: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -94,6 +102,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   };
 
+  const signInWithLink = async (email: string) => {
+    const supabase = await getSupabase();
+    if (!supabase)
+      return { error: 'Mode local : authentification indisponible.' };
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        // Le retour du lien est calculé depuis l'origine SERVIE, jamais depuis
+        // une constante : le même bundle tourne en local et sur Pages. Cette
+        // adresse doit figurer dans la liste d'URL autorisées du projet
+        // Supabase (Authentication → URL Configuration), qui ne contient que
+        // localhost:3000 à la création — sinon le lien part et n'arrive nulle
+        // part.
+        emailRedirectTo: `${window.location.origin}${import.meta.env.BASE_URL}`,
+        // L'inscription est libre ici (`signUp` existe) : le lien crée le
+        // compte s'il n'existe pas, sans mot de passe à choisir.
+        shouldCreateUser: true,
+      },
+    });
+    return { error: error?.message ?? null };
+  };
+
   const signOut = async () => {
     const supabase = await getSupabase();
     if (supabase) await supabase.auth.signOut();
@@ -105,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     signIn,
     signUp,
+    signInWithLink,
     signOut,
   };
 

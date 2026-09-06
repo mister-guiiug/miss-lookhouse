@@ -12,7 +12,14 @@ import { IS_SUPABASE } from './config';
 /** La fabrique socle : `isConfigured()`, `missing()`, `getClient()`, `reset()`. */
 export const supabase = createSupabaseClientFactory<SupabaseClient>({
   env: import.meta.env,
-  auth: { detectSessionInUrl: true },
+  // `flowType: 'pkce'` N'EST PAS UN RÉGLAGE DE SÉCURITÉ ICI, C'EST UNE
+  // NÉCESSITÉ DE ROUTAGE. La connexion par lien renvoie, en flux implicite,
+  // le jeton dans le FRAGMENT (`#access_token=…`) — l'endroit exact où le
+  // `HashRouter` de cette app lit la route : il y verrait une adresse
+  // inconnue, la remplacerait par « / », et le jeton disparaîtrait avant
+  // d'avoir servi. PKCE renvoie `?code=…` dans la query, que le routeur ne
+  // touche pas ; `detectSessionInUrl` l'échange contre une session.
+  auth: { detectSessionInUrl: true, flowType: 'pkce' },
 });
 
 /**

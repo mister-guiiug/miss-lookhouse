@@ -3,15 +3,28 @@ import { Telescope } from 'lucide-react';
 import { useActionGuard } from '@mister-guiiug/dev-pwa-config/react/use-action-guard';
 import { useAuth } from '../../auth/useAuth';
 
-/** Connexion / inscription par e-mail + mot de passe (mode Supabase). */
+type Mode = 'link' | 'signin' | 'signup';
+
+/**
+ * Connexion par e-mail (mode Supabase) : LE LIEN D'ABORD, LE MOT DE PASSE EN
+ * OPTION.
+ *
+ * Un lien à usage unique arrive dans la boîte : rien à retenir, rien à voler,
+ * rien à réinitialiser — et une adresse inconnue reçoit aussi son lien, c'est
+ * l'inscription sans mot de passe. Le formulaire par mot de passe (connexion
+ * et création de compte) reste à un clic, pour qui y tient. C'est la règle de
+ * la famille depuis l'étape 5 d'AMELIORATIONS.md, et ce que deux applications
+ * faisaient déjà.
+ */
 export function LoginScreen() {
-  const { signIn, signUp } = useAuth();
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const { signIn, signUp, signInWithLink } = useAuth();
+  const [mode, setMode] = useState<Mode>('link');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [sentTo, setSentTo] = useState<string | null>(null);
 
   /**
    * LA SEULE ACTION DE L'APP QU'IL FAUT REFUSER AVANT, ET NON APRÈS.
@@ -34,7 +47,11 @@ export function LoginScreen() {
     setError(null);
     setInfo(null);
     try {
-      if (mode === 'signin') {
+      if (mode === 'link') {
+        const { error } = await signInWithLink(email.trim());
+        if (error) setError(error);
+        else setSentTo(email.trim());
+      } else if (mode === 'signin') {
         const { error } = await signIn(email.trim(), password);
         if (error) setError(error);
       } else {
@@ -64,6 +81,19 @@ export function LoginScreen() {
     void guard.wrap(login)();
   };
 
+  const switchTo = (next: Mode) => {
+    setMode(next);
+    setError(null);
+    setInfo(null);
+  };
+
+  const libelle =
+    mode === 'link'
+      ? 'Recevoir un lien de connexion'
+      : mode === 'signin'
+        ? 'Se connecter'
+        : 'Créer un compte';
+
   return (
     <div className="app-shell">
       <main
@@ -78,91 +108,134 @@ export function LoginScreen() {
           </p>
         </div>
 
-        <form className="card" onSubmit={submit}>
-          <div className="field">
-            <label htmlFor="email">E-mail</label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-            />
+        {sentTo ? (
+          <div className="card">
+            <h2 style={{ margin: '0 0 0.5rem' }}>Lien envoyé</h2>
+            <p role="status" className="muted" style={{ fontSize: '0.9rem' }}>
+              Un lien vient d’être envoyé à {sentTo}. Ouvrez-le depuis cet
+              appareil : il vous ramènera ici, connecté·e. Il n’est valable
+              qu’une fois.
+            </p>
+            <button
+              type="button"
+              className="btn"
+              style={{ width: '100%', justifyContent: 'center' }}
+              onClick={() => setSentTo(null)}
+            >
+              Recevoir un autre lien
+            </button>
           </div>
-          <div className="field">
-            <label htmlFor="password">Mot de passe</label>
-            <input
-              id="password"
-              type="password"
-              autoComplete={
-                mode === 'signin' ? 'current-password' : 'new-password'
-              }
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-              minLength={8}
-            />
-          </div>
+        ) : (
+          <form className="card" onSubmit={submit}>
+            <div className="field">
+              <label htmlFor="email">E-mail</label>
+              <input
+                id="email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            {mode !== 'link' && (
+              <div className="field">
+                <label htmlFor="password">Mot de passe</label>
+                <input
+                  id="password"
+                  type="password"
+                  autoComplete={
+                    mode === 'signin' ? 'current-password' : 'new-password'
+                  }
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  minLength={8}
+                />
+              </div>
+            )}
 
-          {error && (
-            <p
-              className="badge badge-danger"
+            {error && (
+              <p
+                role="alert"
+                className="badge badge-danger"
+                style={{ width: '100%', justifyContent: 'center' }}
+              >
+                {error}
+              </p>
+            )}
+            {info && (
+              <p className="muted" style={{ fontSize: '0.85rem' }}>
+                {info}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={busy || guard.disabled}
               style={{ width: '100%', justifyContent: 'center' }}
             >
-              {error}
-            </p>
-          )}
-          {info && (
-            <p className="muted" style={{ fontSize: '0.85rem' }}>
-              {info}
-            </p>
-          )}
+              {busy ? '…' : libelle}
+            </button>
 
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={busy || guard.disabled}
-            style={{ width: '100%', justifyContent: 'center' }}
-          >
-            {busy
-              ? '…'
-              : mode === 'signin'
-                ? 'Se connecter'
-                : 'Créer un compte'}
-          </button>
+            {mode === 'link' && (
+              <p
+                className="muted"
+                style={{ fontSize: '0.85rem', textAlign: 'center' }}
+              >
+                Un lien à usage unique arrive dans votre boîte : aucun mot de
+                passe à retenir, ni à voler. Pas encore de compte ? Le lien le
+                crée.
+              </p>
+            )}
 
-          {/* Le motif, sous le bouton qu'il explique : un bouton grisé sans
-              explication est le même cul-de-sac, en plus poli. */}
-          {guard.reason && (
-            <p
-              role="status"
-              className="muted"
-              style={{ fontSize: '0.85rem', textAlign: 'center' }}
+            {/* Le motif, sous le bouton qu'il explique : un bouton grisé sans
+                explication est le même cul-de-sac, en plus poli. */}
+            {guard.reason && (
+              <p
+                role="status"
+                className="muted"
+                style={{ fontSize: '0.85rem', textAlign: 'center' }}
+              >
+                {guard.reason}
+              </p>
+            )}
+
+            <button
+              type="button"
+              className="btn"
+              style={{
+                width: '100%',
+                justifyContent: 'center',
+                marginTop: '0.5rem',
+              }}
+              onClick={() => switchTo(mode === 'link' ? 'signin' : 'link')}
             >
-              {guard.reason}
-            </p>
-          )}
-
-          <button
-            type="button"
-            className="btn"
-            style={{
-              width: '100%',
-              justifyContent: 'center',
-              marginTop: '0.5rem',
-            }}
-            onClick={() => {
-              setMode(m => (m === 'signin' ? 'signup' : 'signin'));
-              setError(null);
-              setInfo(null);
-            }}
-          >
-            {mode === 'signin'
-              ? 'Pas de compte ? S’inscrire'
-              : 'Déjà un compte ? Se connecter'}
-          </button>
-        </form>
+              {mode === 'link'
+                ? 'Se connecter avec un mot de passe'
+                : 'Recevoir un lien plutôt'}
+            </button>
+            {mode !== 'link' && (
+              <button
+                type="button"
+                className="btn"
+                style={{
+                  width: '100%',
+                  justifyContent: 'center',
+                  marginTop: '0.5rem',
+                }}
+                onClick={() =>
+                  switchTo(mode === 'signin' ? 'signup' : 'signin')
+                }
+              >
+                {mode === 'signin'
+                  ? 'Pas de compte ? S’inscrire'
+                  : 'Déjà un compte ? Se connecter'}
+              </button>
+            )}
+          </form>
+        )}
       </main>
     </div>
   );

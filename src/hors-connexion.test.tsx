@@ -27,11 +27,13 @@ import {
  */
 
 const signIn = vi.fn(() => Promise.resolve({ error: null }));
+const signInWithLink = vi.fn(() => Promise.resolve({ error: null }));
 vi.mock('./auth/useAuth', () => ({
   useAuth: () => ({
     ready: true,
     user: null,
     signIn,
+    signInWithLink,
     signUp: vi.fn(() =>
       Promise.resolve({ error: null, needsConfirmation: false })
     ),
@@ -65,6 +67,7 @@ const banner = () => document.querySelector('[data-dwc="connection-banner"]');
 afterEach(() => {
   cleanup();
   signIn.mockClear();
+  signInWithLink.mockClear();
 });
 
 describe('le shell dit qu’on est hors connexion — après un délai, pas avant', () => {
@@ -131,35 +134,57 @@ describe('le texte du bandeau ne promet que ce que le mode tient', () => {
 });
 
 describe('la connexion refuse de partir hors ligne, et dit pourquoi', () => {
-  const submitButton = () =>
+  // LE LIEN D'ABORD : le bouton principal envoie un lien, le mot de passe est
+  // à un clic. Les deux chemins passent par la même garde.
+  const linkButton = () =>
+    screen.getByRole('button', { name: 'Recevoir un lien de connexion' });
+  const passwordButton = () =>
     screen.getByRole('button', { name: 'Se connecter' });
 
-  function fill() {
+  function fillEmail() {
     fireEvent.change(screen.getByLabelText('E-mail'), {
       target: { value: 'famille@exemple.fr' },
     });
+  }
+  function switchToPassword() {
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Se connecter avec un mot de passe' })
+    );
     fireEvent.change(screen.getByLabelText('Mot de passe'), {
       target: { value: 'motdepasse1' },
     });
   }
 
-  it('en ligne : la connexion part', () => {
+  it('en ligne : le lien part, et c’est le chemin par défaut', () => {
     render(<LoginScreen />);
-    fill();
+    fillEmail();
 
-    expect(submitButton()).toBeEnabled();
-    fireEvent.click(submitButton());
+    expect(screen.queryByLabelText('Mot de passe')).toBeNull();
+    expect(linkButton()).toBeEnabled();
+    fireEvent.click(linkButton());
+
+    expect(signInWithLink).toHaveBeenCalledWith('famille@exemple.fr');
+    expect(signIn).not.toHaveBeenCalled();
+  });
+
+  it('en ligne : le mot de passe reste possible, à un clic', () => {
+    render(<LoginScreen />);
+    fillEmail();
+    switchToPassword();
+
+    fireEvent.click(passwordButton());
 
     expect(signIn).toHaveBeenCalledWith('famille@exemple.fr', 'motdepasse1');
+    expect(signInWithLink).not.toHaveBeenCalled();
   });
 
   it('hors ligne : bouton désactivé ET motif affiché', () => {
     render(<LoginScreen />);
-    fill();
+    fillEmail();
 
     goOffline();
 
-    expect(submitButton()).toBeDisabled();
+    expect(linkButton()).toBeDisabled();
     // Le libellé du paquet, pas une chaîne recopiée ici.
     expect(screen.getByRole('status')).toHaveTextContent(
       'Indisponible hors ligne'
@@ -168,7 +193,7 @@ describe('la connexion refuse de partir hors ligne, et dit pourquoi', () => {
 
   it('hors ligne : soumettre au clavier ne déclenche rien non plus', () => {
     const { container } = render(<LoginScreen />);
-    fill();
+    fillEmail();
 
     goOffline();
 
@@ -176,6 +201,7 @@ describe('la connexion refuse de partir hors ligne, et dit pourquoi', () => {
     // le trou que `disabled` seul laisserait ouvert.
     fireEvent.submit(container.querySelector('form') as HTMLFormElement);
 
+    expect(signInWithLink).not.toHaveBeenCalled();
     expect(signIn).not.toHaveBeenCalled();
   });
 });
