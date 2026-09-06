@@ -29,12 +29,19 @@ inoffensive car **toute la sécurité est appliquée ici**, jamais par le client
   Secrets requis : `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_ID`,
   `SUPABASE_DB_PASSWORD`.
 
+  > ⚠️ **Ces secrets ne sont pas posés** : le workflow a échoué à ses **huit**
+  > exécutions depuis juin 2026 et **n'a jamais appliqué une seule migration**.
+  > Tout ce qui est en base y a été poussé à la main. Marche à suivre :
+  > [`CONFIG.md`](../CONFIG.md) — dont l'effet visible en production de
+  > `0013_delete_my_account` non appliquée.
+
 Ordre : `0001_schema` → `0002_rls` → `0003_seed` (référentiel sources) →
 `0004_scheduling` (pg_cron + pg_net) → `0005_notifications_dispatch` →
 `0006_search_sharing` → `0007_list_shares` → `0008_share_neutral` →
 `0009_notification_delivery` (statut de livraison + garde de colonne) →
 `0010_public_catalog` → `0011_keep_alive` (table du ping anti-pause) →
-`0012_rls_no_force` (retrait de `force row level security`, cf. §7).
+`0012_rls_no_force` (retrait de `force row level security`, cf. §7) →
+`0013_delete_my_account` (RGPD art. 17 : l'utilisateur efface son compte).
 
 ## 3. Storage
 

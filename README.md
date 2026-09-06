@@ -155,6 +155,12 @@ techniques (migrations, RLS, planification, Edge Functions, secrets) :
 > ne vivent **jamais** dans le dépôt — uniquement dans les secrets Supabase /
 > Edge Functions.
 
+> ⚠️ **Les migrations ne sont pas appliquées par la CI.** Le workflow
+> `Supabase migrations` a échoué à ses **huit** exécutions depuis juin 2026 :
+> le dépôt n'a **aucun secret**. La marche à suivre — les trois secrets à poser,
+> ou la commande locale à défaut — est dans **[`CONFIG.md`](CONFIG.md)**, qui
+> dit aussi ce que cela change pour l'utilisateur aujourd'hui.
+
 ## 🌐 Déploiement (GitHub Pages)
 
 CI/CD délégués aux workflows réutilisables famille (`pwa-ci.yml@v1`,

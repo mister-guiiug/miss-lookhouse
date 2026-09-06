@@ -1,9 +1,19 @@
 # Applique les migrations Supabase (forward-only) à chaque fusion sur main qui
 # touche supabase/migrations/**, et au déclenchement manuel.
-# Secrets requis (Settings → Secrets and variables → Actions) :
-#   SUPABASE_ACCESS_TOKEN  (Account → Access Tokens — À ROTATER s'il a fuité)
-#   SUPABASE_PROJECT_ID    (Project Settings → General → Reference ID)
-#   SUPABASE_DB_PASSWORD   (Project Settings → Database)
+#
+# CONFIGURATION REQUISE : voir CONFIG.md à la racine du dépôt. Tant que les
+# trois secrets ne sont pas posés, la première étape échoue en nommant ceux qui
+# manquent — c'est volontaire (cf. ci-dessous).
+#
+# POURQUOI UNE ÉTAPE DE GARDE. Ce workflow a échoué à ses huit exécutions entre
+# juin et septembre 2026 sans que personne le sache, pour deux raisons cumulées :
+# le dépôt n'avait aucun secret, et `SUPABASE_PROJECT_ID` n'était pas passé dans
+# le bloc `env:` de l'étape — `supabase link --project-ref ""` aurait donc
+# échoué même une fois les secrets posés. Le seul message était « Access token
+# not provided », rendu par la CLI au bout de neuf secondes, qui ne dit ni
+# lequel des trois manque ni où le poser. Une CI rouge qui n'apprend rien est
+# une CI qu'on cesse de lire : l'étape ci-dessous nomme les secrets absents et
+# renvoie à la marche à suivre.
 name: Supabase migrations
 
 on:
@@ -21,6 +31,45 @@ jobs:
   push:
     runs-on: ubuntu-latest
     steps:
+      # En PREMIER, avant même le checkout : inutile d'installer une CLI qu'on
+      # ne pourra pas authentifier. Le nom de l'étape en rouge dans l'onglet
+      # Actions suffit alors à dire la cause.
+      - name: Vérifier les secrets requis
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID || vars.SUPABASE_PROJECT_ID }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          manquants=''
+          for nom in SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_ID SUPABASE_DB_PASSWORD; do
+            if [ -z "${!nom}" ]; then
+              manquants="${manquants:+$manquants, }$nom"
+            fi
+          done
+          if [ -n "$manquants" ]; then
+            # Annotation : visible depuis la LISTE des runs, sans ouvrir le journal.
+            echo "::error title=Migrations Supabase non appliquées::Secret(s) absent(s) : $manquants — voir CONFIG.md (Settings › Secrets and variables › Actions)."
+            echo ''
+            echo "Secret(s) absent(s) : $manquants"
+            echo ''
+            echo 'Aucune migration ne sera appliquée au projet hébergé tant que ce'
+            echo "n'est pas corrigé. Deux façons de le faire :"
+            echo ''
+            echo '  1. Les poser une fois pour toutes, dans ce dépôt :'
+            echo '       Settings › Secrets and variables › Actions › New repository secret'
+            echo '       - SUPABASE_ACCESS_TOKEN  Supabase › Account › Access Tokens (sbp_…)'
+            echo '       - SUPABASE_PROJECT_ID    Project Settings › General › Reference ID'
+            echo '       - SUPABASE_DB_PASSWORD   Project Settings › Database'
+            echo '     puis relancer : Actions › Supabase migrations › Run workflow.'
+            echo ''
+            echo '  2. Ou les appliquer depuis un poste, sans rien poser ici :'
+            echo '       supabase link --project-ref <ref> && supabase db push'
+            echo ''
+            echo 'Marche à suivre détaillée : CONFIG.md à la racine du dépôt.'
+            exit 1
+          fi
+          echo 'Les trois secrets sont présents.'
+
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
         with:
@@ -28,6 +77,9 @@ jobs:
       - name: Push migrations
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          # Absent du bloc `env:` jusqu'au 06/09/2026 : `supabase link` recevait
+          # une chaîne vide. Le bug était masqué par l'absence totale de secrets.
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID || vars.SUPABASE_PROJECT_ID }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
           supabase link --project-ref "$SUPABASE_PROJECT_ID"
