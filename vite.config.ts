@@ -113,7 +113,7 @@ export default defineConfig(({ command }) => {
         manifest: {
           id: basePath,
           name: 'Miss LookHouse',
-          short_name: 'LookHouse',
+          short_name: 'Miss LookHouse',
           description:
             'Veille immobilière responsable : surveillez vos zones, historisez les annonces, repérez les doublons et baisses de prix.',
           theme_color: '#0f766e',
