@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Miss LookHouse">
+  <!--
+    LE MASKABLE, ET POURQUOI CE N'EST PAS `favicon.svg` EN PLUS PETIT.
+
+    Le PNG maskable livré jusqu'ici était la tuile arrondie RÉDUITE sur un fond
+    vert pâle : le raccord se voyait, et Android en faisait un liseré clair tout
+    autour de l'icône. Un maskable ne se fabrique pas en redimensionnant une
+    tuile — il se dessine à fond perdu.
+
+    DEUX DIFFÉRENCES AVEC LA SOURCE, ET DEUX SEULEMENT :
+
+      1. LE FOND N'A PLUS DE COINS. `rx="112"` devient un rectangle plein : quel
+         que soit le masque de l'appareil — cercle, squircle, goutte — il n'y a
+         pas de bord à voir, puisqu'il n'y en a plus. Le dégradé est le même,
+         aux mêmes arrêts.
+
+      2. LE DESSIN RENTRE DANS LA ZONE DE SÉCURITÉ, le disque de 80 % de la
+         toile (rayon 204,8). Il est d'abord recentré sur SA propre boîte — il
+         penchait vers le bas-droite à cause du manche de la loupe — puis réduit
+         à 88 %. Le point le plus éloigné devient le bout du manche, à 180 px du
+         centre : vingt-cinq pixels de marge sous la limite.
+  -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#14b8a6" />
+      <stop offset="1" stop-color="#0f766e" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#g)" />
+  <g transform="translate(256 256) scale(0.88) translate(-256 -256) translate(-13.5 -12)">
+    <!-- Maison -->
+    <path
+      d="M256 120 124 232v168a16 16 0 0 0 16 16h84V312h64v104h84a16 16 0 0 0 16-16V232z"
+      fill="#ecfeff"
+      opacity="0.95"
+    />
+    <!-- Loupe (veille) -->
+    <circle cx="320" cy="300" r="58" fill="none" stroke="#0f766e" stroke-width="22" />
+    <line
+      x1="360"
+      y1="340"
+      x2="404"
+      y2="384"
+      stroke="#0f766e"
+      stroke-width="26"
+      stroke-linecap="round"
+    />
+  </g>
+</svg>
