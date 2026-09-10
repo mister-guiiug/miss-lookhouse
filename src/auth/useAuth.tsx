@@ -13,7 +13,10 @@ import {
 import type { Session, User } from '@supabase/supabase-js';
 import { getSupabase } from '../backend/supabaseClient';
 import { IS_SUPABASE } from '../backend/config';
-import { navigateurHorsLigne, storedSession } from './storedSession';
+import {
+  navigateurHorsLigne,
+  storedSupabaseSession,
+} from '@mister-guiiug/dev-pwa-config/auth/stored-session';
 
 export interface AuthValue {
   ready: boolean;
@@ -82,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
          * jeton de rafraîchissement a été révoqué.
          */
         void (async () => {
-          const stockee = storedSession();
+          const stockee = storedSupabaseSession() as Session | null;
 
           // Hors ligne : ne rien demander. Supabase n'a que le réseau pour
           // répondre, et il met une demi-minute à l'admettre.
