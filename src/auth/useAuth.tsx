@@ -13,6 +13,7 @@ import {
 import type { Session, User } from '@supabase/supabase-js';
 import { getSupabase } from '../backend/supabaseClient';
 import { IS_SUPABASE } from '../backend/config';
+import { navigateurHorsLigne, storedSession } from './storedSession';
 
 export interface AuthValue {
   ready: boolean;
@@ -37,6 +38,19 @@ export interface AuthValue {
   signOut: () => Promise<void>;
 }
 
+/**
+ * COMBIEN DE TEMPS ON ACCEPTE D'ATTENDRE SUPABASE AU DÉMARRAGE.
+ *
+ * `auth.getSession()` n'est pas une lecture : jeton périmé, il part le
+ * renouveler contre le réseau, avec des reprises bornées par sa propre fenêtre
+ * de rafraîchissement — une trentaine de secondes. Passé ce délai on démarre
+ * sur la session écrite sur l'appareil, et `onAuthStateChange` corrige.
+ */
+const ATTENTE_MAX_MS = 5_000;
+
+/** Marqueur d'attente dépassée, distinct de `null` (« pas de session »). */
+const TROP_LONG = Symbol('attente dépassée');
+
 const AuthContext = createContext<AuthValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -53,11 +67,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (active) setReady(true);
           return;
         }
-        void supabase.auth.getSession().then(({ data }) => {
+        /**
+         * L'AMORÇAGE NE DOIT JAMAIS DÉPENDRE DU RÉSEAU.
+         *
+         * Avant, il en dépendait entièrement. Hors ligne avec un jeton périmé
+         * — c'est-à-dire dès qu'une heure a passé — `getSession()` tournait
+         * 26 secondes avant de renoncer et d'annoncer « pas de session », et
+         * `AuthGate` affichait alors l'écran de CONNEXION, qu'on ne peut pas
+         * franchir sans réseau. Mesuré sur la production le 2026-09-10.
+         *
+         * Le repli ne dégrade rien quand le réseau est là : c'est la même
+         * session, simplement pas encore renouvelée, et `onAuthStateChange`
+         * la corrigera — `TOKEN_REFRESHED` au retour, `SIGNED_OUT` si le
+         * jeton de rafraîchissement a été révoqué.
+         */
+        void (async () => {
+          const stockee = storedSession();
+
+          // Hors ligne : ne rien demander. Supabase n'a que le réseau pour
+          // répondre, et il met une demi-minute à l'admettre.
+          if (navigateurHorsLigne() && stockee) {
+            if (!active) return;
+            setSession(stockee);
+            setReady(true);
+            return;
+          }
+
+          // En ligne — ou ce que le navigateur appelle ainsi : `onLine` est
+          // vrai derrière un portail captif comme sur un Wi-Fi qui ne route
+          // rien. D'où l'attente bornée.
+          let minuteur: ReturnType<typeof setTimeout> | undefined;
+          const issue = await Promise.race([
+            supabase.auth.getSession().then(({ data }) => data.session),
+            new Promise<typeof TROP_LONG>(resoudre => {
+              minuteur = setTimeout(() => resoudre(TROP_LONG), ATTENTE_MAX_MS);
+            }),
+          ]);
+          clearTimeout(minuteur);
           if (!active) return;
-          setSession(data.session);
+          setSession(issue === TROP_LONG ? stockee : issue);
           setReady(true);
-        });
+        })();
         const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
           if (active) setSession(s);
         });
