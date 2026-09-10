@@ -45,7 +45,17 @@
       content="black-translucent"
     />
     <meta name="apple-mobile-web-app-title" content="Miss LookHouse" />
-    <link rel="apple-touch-icon" href="favicon.svg" />
+    <!--
+      UN PNG, PAS LE SVG. iOS ne sait pas lire un SVG pour `apple-touch-icon` :
+      il ignorait la balise et posait une CAPTURE DE LA PAGE sur l'écran
+      d'accueil. Le 180 est la taille que réclament les iPhone récents.
+
+      Il est tiré du `icon-512.png` DÉJÀ LIVRÉ, et non régénéré depuis
+      `favicon.svg` : le jeu versionné ne sort pas du `pwa-icons` actuel, et
+      repartir de la source aurait remplacé des images en production pour un
+      défaut qui ne les concerne pas.
+    -->
+    <link rel="apple-touch-icon" href="icon-180.png" />
     <meta
       name="description"
       content="Veille immobilière responsable : surveillez vos zones, historisez les annonces, repérez doublons et baisses de prix."
