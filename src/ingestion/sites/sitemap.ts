@@ -94,7 +94,7 @@ export async function resolveDetailUrls(
   });
   if (direct.length > 0) return byDept(direct);
 
-  let locs: string[] = [];
+  let locs: string[];
   try {
     locs = parseSitemapLocs(await fetcher.text(sitemapUrl));
   } catch {
