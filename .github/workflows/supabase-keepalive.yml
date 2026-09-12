@@ -19,5 +19,5 @@ jobs:
     # Nommés, pas hérités : le workflow déclare exactement ces deux secrets.
     # `inherit` lui donnerait accès à tout le trousseau du dépôt.
     secrets:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
