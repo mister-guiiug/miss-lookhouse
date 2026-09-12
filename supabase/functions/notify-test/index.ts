@@ -52,7 +52,7 @@ Deno.serve(async (req: Request) => {
 
   // Déclenche le dispatch immédiat de CETTE notification via `notify`
   // (gated par INGEST_TOKEN ; notify écrit dispatched_at + delivery).
-  let dispatch: unknown = null;
+  let dispatch: unknown;
   try {
     const res = await fetchWithTimeout(
       `${url}/functions/v1/notify`,

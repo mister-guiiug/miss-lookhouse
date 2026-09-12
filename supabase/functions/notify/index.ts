@@ -98,11 +98,7 @@ Deno.serve(async (req: Request) => {
 
   // Statut de livraison par canal (persisté dans notifications.delivery, cf. 0009).
   type ChannelStatus =
-    | 'sent'
-    | 'partial'
-    | 'failed'
-    | 'skipped'
-    | 'no_subscription';
+    'sent' | 'partial' | 'failed' | 'skipped' | 'no_subscription';
   interface Delivery {
     at: string;
     channels: { webhook: ChannelStatus; push: ChannelStatus };

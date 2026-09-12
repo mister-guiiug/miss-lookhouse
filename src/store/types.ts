@@ -69,11 +69,7 @@ export interface LocalSearch {
 
 /** Issue d'un canal de livraison (cf. notify / migration 0009). */
 export type NotificationChannelStatus =
-  | 'sent'
-  | 'partial'
-  | 'failed'
-  | 'skipped'
-  | 'no_subscription';
+  'sent' | 'partial' | 'failed' | 'skipped' | 'no_subscription';
 
 /** Résumé de livraison d'une notification, écrit par la fonction `notify`. */
 export interface NotificationDelivery {

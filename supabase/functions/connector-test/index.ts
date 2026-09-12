@@ -17,7 +17,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return json({ error: 'POST attendu' }, 405);
 
-  let cfg: Record<string, unknown> = {};
+  let cfg: Record<string, unknown>;
   try {
     cfg = (await req.json()) as Record<string, unknown>;
   } catch {

@@ -81,10 +81,7 @@ export interface SearchCriteria {
 }
 
 export type SimilarityBucket =
-  | 'doublon_exact'
-  | 'probable_identique'
-  | 'similaire'
-  | 'different';
+  'doublon_exact' | 'probable_identique' | 'similaire' | 'different';
 
 /** Un facteur explicable de la similarité (transparence du score). */
 export interface SimilarityFactor {

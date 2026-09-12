@@ -7,8 +7,7 @@ import { getSupabase } from '../backend/supabaseClient';
 import { IS_SUPABASE } from '../backend/config';
 
 const VAPID_PUBLIC = import.meta.env.VITE_VAPID_PUBLIC_KEY as
-  | string
-  | undefined;
+  string | undefined;
 
 /** Le Web Push est-il utilisable ici (mode + API navigateur + clé) ? */
 export function pushSupported(): boolean {

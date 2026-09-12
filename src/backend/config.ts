@@ -9,8 +9,7 @@
 import { supabaseConfig } from '@mister-guiiug/dev-pwa-config/supabase-client';
 
 const declared = (import.meta.env.VITE_BACKEND ?? 'local') as
-  | 'local'
-  | 'supabase';
+  'local' | 'supabase';
 
 const hasSupabaseEnv = supabaseConfig(import.meta.env).missing.length === 0;
 
