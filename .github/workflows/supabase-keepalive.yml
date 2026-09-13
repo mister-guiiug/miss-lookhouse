@@ -2,10 +2,10 @@
 #
 # Un projet Free se met en pause après sept jours sans requête, et le
 # déploiement échoue alors sur « project is paused » (miss-carbook, 29/08/2026).
-# Ce ping fait un SELECT anonyme sur la table `keep_alive` tous les trois jours.
+# Ce ping fait un SELECT anonyme tous les trois jours.
 #
-# Requiert les secrets VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY, et la table
-# `keep_alive` (migration 0011_keep_alive.sql).
+# Requiert les variables VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY, et une
+# table que `anon` peut lire.
 name: Supabase keep-alive
 
 on:
@@ -16,6 +16,32 @@ on:
 jobs:
   keepalive:
     uses: mister-guiiug/dev-pwa-config/.github/workflows/pwa-supabase-keepalive.yml@v4
+    # ─────────────────────────── PROVISOIRE ────────────────────────────────
+    # À RETIRER dès que `0011_keep_alive` + `0014_keep_alive_privileges` sont
+    # appliquées au projet hébergé. Sans ce bloc, la cible redevient
+    # `keep_alive`, qui est le défaut du réutilisable — il suffit d'effacer les
+    # deux lignes `with:`.
+    #
+    # POURQUOI ON PINGE UNE TABLE MÉTIER. `keep_alive` n'existe pas en base :
+    # ce dépôt n'a AUCUN des trois secrets de migration, `Supabase migrations`
+    # a échoué à ses neuf exécutions depuis juin 2026, et tout ce qui est en
+    # base y a été poussé à la main. Le ping répondait donc 404 à chaque cron
+    # depuis le 04/09/2026 — et un 404 ne réveille RIEN : PostgREST le tranche
+    # sur son cache de schéma, sans toucher à Postgres. La protection
+    # anti-pause n'existait pas, elle avait seulement l'air d'exister en rouge.
+    #
+    # `profiles` est lisible par `anon` (la RLS ne lui rend aucune ligne, mais
+    # la requête S'EXÉCUTE, et c'est tout ce que le compteur d'inactivité
+    # regarde). Vérifié : `GET /rest/v1/profiles?select=id&limit=1` → 200 `[]`.
+    #
+    # CE QUE ÇA COÛTE, ET IL FAUT LE SAVOIR. Vert ne veut plus dire « la table
+    # du keep-alive est en place » mais « la base a répondu ». Le jour où
+    # `profiles` verra ses privilèges resserrés pour `anon` — ce que fait déjà
+    # `mister-settle` sur la sienne — ce ping rougira pour une raison sans
+    # rapport avec la pause. C'est le prix d'un projet qu'on ne peut pas
+    # migrer ; il se rembourse en effaçant ce bloc.
+    with:
+      table: profiles
     # Nommés, pas hérités : le workflow déclare exactement ces deux secrets.
     # `inherit` lui donnerait accès à tout le trousseau du dépôt.
     secrets:
