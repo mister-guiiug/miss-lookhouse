@@ -41,7 +41,15 @@ Ordre : `0001_schema` → `0002_rls` → `0003_seed` (référentiel sources) →
 `0009_notification_delivery` (statut de livraison + garde de colonne) →
 `0010_public_catalog` → `0011_keep_alive` (table du ping anti-pause) →
 `0012_rls_no_force` (retrait de `force row level security`, cf. §7) →
-`0013_delete_my_account` (RGPD art. 17 : l'utilisateur efface son compte).
+`0013_delete_my_account` (RGPD art. 17 : l'utilisateur efface son compte) →
+`0014_keep_alive_privileges` (privilèges de table de `keep_alive`, seconde
+barrière indépendante de la RLS).
+
+> ⚠️ **`0011_keep_alive` n'est pas appliquée** : la table n'existe pas sur le
+> projet hébergé, vérifié le 13/09/2026 (`PGRST205` sur
+> `GET /rest/v1/keep_alive`). Le ping anti-pause échoue donc à chaque passage du
+> cron depuis le 04/09, et **ne réveille rien** — un 404 est tranché par
+> PostgREST sur son cache de schéma, sans toucher à Postgres.
 
 ## 3. Storage
 
