@@ -50,10 +50,12 @@
       il ignorait la balise et posait une CAPTURE DE LA PAGE sur l'écran
       d'accueil. Le 180 est la taille que réclament les iPhone récents.
 
-      Il est tiré du `icon-512.png` DÉJÀ LIVRÉ, et non régénéré depuis
-      `favicon.svg` : le jeu versionné ne sort pas du `pwa-icons` actuel, et
-      repartir de la source aurait remplacé des images en production pour un
-      défaut qui ne les concerne pas.
+      Il est rendu depuis `icon-maskable-512.svg` — la source À FOND PERDU — et
+      non depuis `favicon.svg`. iOS pose son propre masque et n'accepte pas la
+      transparence : partir de la tuile arrondie fait aplatir ses coins sur une
+      couleur, et le fichier livré jusqu'au 14/09/2026 les portait en
+      `12,18,34`, le bleu-noir par défaut de `pwa-icons`. Voir
+      `scripts/generate-maskable.mjs`, qui l'écrit avec le maskable.
     -->
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <meta
