@@ -16,32 +16,17 @@ on:
 jobs:
   keepalive:
     uses: mister-guiiug/dev-pwa-config/.github/workflows/pwa-supabase-keepalive.yml@v4
-    # ─────────────────────────── PROVISOIRE ────────────────────────────────
-    # À RETIRER dès que `0011_keep_alive` + `0014_keep_alive_privileges` sont
-    # appliquées au projet hébergé. Sans ce bloc, la cible redevient
-    # `keep_alive`, qui est le défaut du réutilisable — il suffit d'effacer les
-    # deux lignes `with:`.
+    # Aucun `with:` : la cible est `keep_alive`, le défaut du réutilisable.
     #
-    # POURQUOI ON PINGE UNE TABLE MÉTIER. `keep_alive` n'existe pas en base :
-    # ce dépôt n'a AUCUN des trois secrets de migration, `Supabase migrations`
-    # a échoué à ses neuf exécutions depuis juin 2026, et tout ce qui est en
-    # base y a été poussé à la main. Le ping répondait donc 404 à chaque cron
-    # depuis le 04/09/2026 — et un 404 ne réveille RIEN : PostgREST le tranche
-    # sur son cache de schéma, sans toucher à Postgres. La protection
-    # anti-pause n'existait pas, elle avait seulement l'air d'exister en rouge.
+    # Ce bloc a porté `table: profiles` du 13 au 14/09/2026, le temps que ce
+    # projet redevienne migrable — `keep_alive` n'existait pas en base, et les
+    # neuf exécutions de `Supabase migrations` depuis juin échouaient faute de
+    # secrets. Le ping était alors VERT sur une table métier, ce qui protégeait
+    # bien de la pause mais ne disait plus rien de l'état du keep-alive.
+    # Le dépôt a reçu ses secrets le 14/09, `0011_keep_alive` et
+    # `0014_keep_alive_privileges` sont passées, et le repli a été effacé —
+    # comme son propre commentaire le prescrivait.
     #
-    # `profiles` est lisible par `anon` (la RLS ne lui rend aucune ligne, mais
-    # la requête S'EXÉCUTE, et c'est tout ce que le compteur d'inactivité
-    # regarde). Vérifié : `GET /rest/v1/profiles?select=id&limit=1` → 200 `[]`.
-    #
-    # CE QUE ÇA COÛTE, ET IL FAUT LE SAVOIR. Vert ne veut plus dire « la table
-    # du keep-alive est en place » mais « la base a répondu ». Le jour où
-    # `profiles` verra ses privilèges resserrés pour `anon` — ce que fait déjà
-    # `mister-settle` sur la sienne — ce ping rougira pour une raison sans
-    # rapport avec la pause. C'est le prix d'un projet qu'on ne peut pas
-    # migrer ; il se rembourse en effaçant ce bloc.
-    with:
-      table: profiles
     # Nommés, pas hérités : le workflow déclare exactement ces deux secrets.
     # `inherit` lui donnerait accès à tout le trousseau du dépôt.
     secrets:
