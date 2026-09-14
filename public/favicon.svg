@@ -1,4 +1,34 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Miss LookHouse">
+  <!--
+    LE RELEVÉ — un toit, et sous lui la série qui descend.
+
+    CE QUE LE DESSIN PRÉCÉDENT DISAIT DE TRAVERS. C'était une maison sous une
+    loupe. La loupe dit « chercher » ; cette app ne cherche pas, elle SURVEILLE
+    dans la durée : historisation, série de prix, détection de republication,
+    passage horaire. Elle portait donc le métier d'un portail d'annonces, pas le
+    sien.
+
+    Et un défaut de lisibilité, celui-là mesurable : l'anneau de la loupe était
+    tracé en #0f766e — le stop SOMBRE du fond — par-dessus une maison #ecfeff.
+    Deux contrastes opposés dans 58 px de rayon. Sous 32 px l'intérieur de
+    l'anneau se remplit du blanc de la maison et l'icône devient une tache.
+
+    ICI, UNE SEULE ENCRE SUR LE DÉGRADÉ. Les trois barres décroissantes disent la
+    BAISSE de prix — le signal que l'app existe pour attraper. Elles se
+    rejoignent sous 32 px, leurs 16 px d'écart valant alors moins d'un
+    demi-pixel, mais le profil en escalier survit : c'est lui qui porte le sens,
+    pas les fentes.
+
+    LE CADRAGE EST MESURÉ, PAS ESTIMÉ. Le dessin occupe 280 px des 512 — 55 % de
+    la largeur. Le premier jet n'en prenait que 41 %, ce qui passait inaperçu en
+    grand et rendait le 16 px anémique. Il est centré exactement : boîte de
+    116 à 396 en x, de 107 à 405 en y, milieu (256, 256) sur les deux axes,
+    demi-épaisseur du trait comprise.
+
+    Le dégradé, ses arrêts et le #ecfeff sont ceux d'avant. `theme-color`
+    (#0f766e) et `background_color` (#ecfeff) restent donc exacts sans avoir été
+    touchés.
+  -->
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#14b8a6" />
@@ -6,21 +36,19 @@
     </linearGradient>
   </defs>
   <rect width="512" height="512" rx="112" fill="url(#g)" />
-  <!-- Maison -->
+  <!-- Toit : il déborde de 5 px de chaque côté de la série, comme un avant-toit -->
   <path
-    d="M256 120 124 232v168a16 16 0 0 0 16 16h84V312h64v104h84a16 16 0 0 0 16-16V232z"
-    fill="#ecfeff"
-    opacity="0.95"
-  />
-  <!-- Loupe (veille) -->
-  <circle cx="320" cy="300" r="58" fill="none" stroke="#0f766e" stroke-width="22" />
-  <line
-    x1="360"
-    y1="340"
-    x2="404"
-    y2="384"
-    stroke="#0f766e"
-    stroke-width="26"
+    d="M137 226 256 128 375 226"
+    fill="none"
+    stroke="#ecfeff"
+    stroke-width="42"
     stroke-linecap="round"
+    stroke-linejoin="round"
   />
+  <!-- La série : trois relevés, en baisse -->
+  <g fill="#ecfeff">
+    <rect x="142" y="253" width="65" height="152" rx="16" />
+    <rect x="223" y="253" width="65" height="116" rx="16" />
+    <rect x="304" y="253" width="65" height="80" rx="16" />
+  </g>
 </svg>

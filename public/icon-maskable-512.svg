@@ -2,23 +2,25 @@
   <!--
     LE MASKABLE, ET POURQUOI CE N'EST PAS `favicon.svg` EN PLUS PETIT.
 
-    Le PNG maskable livré jusqu'ici était la tuile arrondie RÉDUITE sur un fond
-    vert pâle : le raccord se voyait, et Android en faisait un liseré clair tout
-    autour de l'icône. Un maskable ne se fabrique pas en redimensionnant une
-    tuile — il se dessine à fond perdu.
+    Le PNG maskable livré jusqu'à septembre 2026 était la tuile arrondie RÉDUITE
+    sur un fond vert pâle : le raccord se voyait, et Android en faisait un liseré
+    clair tout autour de l'icône. Un maskable ne se fabrique pas en
+    redimensionnant une tuile — il se dessine à fond perdu.
 
-    DEUX DIFFÉRENCES AVEC LA SOURCE, ET DEUX SEULEMENT :
+    UNE SEULE DIFFÉRENCE AVEC LA SOURCE, DÉSORMAIS : LE FOND N'A PLUS DE COINS.
+    `rx="112"` devient un rectangle plein. Quel que soit le masque de l'appareil
+    — cercle, squircle, goutte — il n'y a pas de bord à voir, puisqu'il n'y en a
+    plus. Le dégradé, ses arrêts et le dessin sont identiques, au pixel.
 
-      1. LE FOND N'A PLUS DE COINS. `rx="112"` devient un rectangle plein : quel
-         que soit le masque de l'appareil — cercle, squircle, goutte — il n'y a
-         pas de bord à voir, puisqu'il n'y en a plus. Le dégradé est le même,
-         aux mêmes arrêts.
+    CE QUI A DISPARU : LA RUSTINE. L'icône précédente devait être recentrée à la
+    main (`translate(-13.5 -12)`) puis ramenée à 88 %, parce que le manche de la
+    loupe la poussait hors de la zone de sécurité — le disque de 80 % de la
+    toile, rayon 204,8. Ce dessin-ci est centré nativement et y tient : son point
+    le plus éloigné du centre est le coin bas-gauche de la première barre, à
+    188 px. Dix-sept pixels de marge, sans rien mettre à l'échelle.
 
-      2. LE DESSIN RENTRE DANS LA ZONE DE SÉCURITÉ, le disque de 80 % de la
-         toile (rayon 204,8). Il est d'abord recentré sur SA propre boîte — il
-         penchait vers le bas-droite à cause du manche de la loupe — puis réduit
-         à 88 %. Le point le plus éloigné devient le bout du manche, à 180 px du
-         centre : vingt-cinq pixels de marge sous la limite.
+    Donc : si `favicon.svg` change, ce fichier se met à jour en recopiant son
+    dessin tel quel. Il n'y a plus de transformation à refaire.
   -->
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
@@ -27,23 +29,19 @@
     </linearGradient>
   </defs>
   <rect width="512" height="512" fill="url(#g)" />
-  <g transform="translate(256 256) scale(0.88) translate(-256 -256) translate(-13.5 -12)">
-    <!-- Maison -->
-    <path
-      d="M256 120 124 232v168a16 16 0 0 0 16 16h84V312h64v104h84a16 16 0 0 0 16-16V232z"
-      fill="#ecfeff"
-      opacity="0.95"
-    />
-    <!-- Loupe (veille) -->
-    <circle cx="320" cy="300" r="58" fill="none" stroke="#0f766e" stroke-width="22" />
-    <line
-      x1="360"
-      y1="340"
-      x2="404"
-      y2="384"
-      stroke="#0f766e"
-      stroke-width="26"
-      stroke-linecap="round"
-    />
+  <!-- Toit : il déborde de 5 px de chaque côté de la série, comme un avant-toit -->
+  <path
+    d="M137 226 256 128 375 226"
+    fill="none"
+    stroke="#ecfeff"
+    stroke-width="42"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <!-- La série : trois relevés, en baisse -->
+  <g fill="#ecfeff">
+    <rect x="142" y="253" width="65" height="152" rx="16" />
+    <rect x="223" y="253" width="65" height="116" rx="16" />
+    <rect x="304" y="253" width="65" height="80" rx="16" />
   </g>
 </svg>
