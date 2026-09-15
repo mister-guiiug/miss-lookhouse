@@ -514,3 +514,20 @@ label {
 .lightbox-nav.right {
   right: 0.5rem;
 }
+
+/* Bandeau de consentement du socle. Comme le bandeau hors-ligne, il vit HORS de
+   `.app-shell` et de ses 720 px : sans ces gouttières il traverserait l'écran
+   d'un bord à l'autre pendant que tout le reste reste centré.
+
+   EN HAUT, ET C'EST UN CHOIX DE PLACE, PAS DE GOÛT : la barre de navigation
+   basse est fixe, et les notifications du socle sont déjà remontées au-dessus
+   d'elle. Un bandeau collé en bas passerait dessous — invisible, donc une
+   question jamais posée, ce qui est précisément le défaut qu'on corrige.
+
+   `components.css` fournit déjà sa boîte et ses boutons ; cette règle n'ajoute
+   que le cadrage. Non « layered », elle l'emporte sur le socle. */
+[data-dwc='consent-banner'] {
+  max-width: 720px;
+  margin: 0.5rem auto 0;
+  width: calc(100% - 2rem);
+}

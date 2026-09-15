@@ -4,6 +4,7 @@ import { Monitor, Moon, Sun } from 'lucide-react';
 import { ThemeProvider } from '@mister-guiiug/dev-pwa-config/react/theme-provider';
 import { IconsProvider } from '@mister-guiiug/dev-pwa-config/react/icons-context';
 import { ToastProvider } from '@mister-guiiug/dev-pwa-config/react/toast';
+import { ConsentBanner } from '@mister-guiiug/dev-pwa-config/react/consent-banner';
 import { useAppStore } from './store/useAppStore';
 import { THEME_COLOR, THEME_LEGACY_KEYS, THEME_STORAGE_KEY } from './theme';
 import { AuthProvider } from './auth/useAuth';
@@ -111,6 +112,22 @@ export function App() {
                 premier endroit où la coupure fait mal, et c'est justement celui
                 qui n'affichait rien. */}
             <OfflineBanner />
+            {/*
+              AU-DESSUS DE LA GARDE, POUR LA MÊME RAISON QUE LE BANDEAU
+              HORS-LIGNE JUSTE AU-DESSUS. Monté dans `Layout`, il vivait
+              DERRIÈRE l'écran de connexion : un visiteur non connecté n'a
+              JAMAIS vu la question. Vérifié le 16/09/2026 sur la production —
+              `[data-dwc="consent-banner"]` absent du document. Cette app
+              n'aurait donc rien mesuré, sa variable posée ou non.
+
+              EN HAUT ET NON EN BAS : la barre de navigation basse est FIXE, et
+              les notifications du socle sont déjà remontées au-dessus d'elle.
+              Un bandeau collé en bas passerait dessous. La feuille de style lui
+              donne les mêmes gouttières qu'au bandeau hors-ligne.
+            */}
+            <ConsentBanner
+              gaMeasurementId={import.meta.env.VITE_GA_MEASUREMENT_ID}
+            />
             <AuthGate>
               {ready ? (
                 <RoutedApp />
