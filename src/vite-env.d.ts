@@ -8,6 +8,12 @@ interface ImportMetaEnv {
   readonly VITE_VAPID_PUBLIC_KEY?: string;
   readonly VITE_GEOCODER_URL?: string;
   readonly VITE_BASE_PATH?: string;
+  /**
+   * Identifiant de mesure GA4 (`G-…`), propre à CETTE application. Absent, le
+   * bandeau de consentement ne rend rien et rien n'est mesuré : c'est le seul
+   * interrupteur.
+   */
+  readonly VITE_GA_MEASUREMENT_ID?: string;
 }
 
 interface ImportMeta {

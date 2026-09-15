@@ -89,6 +89,11 @@ export default defineConfig(({ command }) => {
       // de carte viennent de partout.
       cspPlugin({
         dev: command === 'serve',
+        // `analytics` ouvre les hôtes de Google Tag Manager et de GA4. Sans
+        // lui, le script que `ConsentBanner` injecte APRÈS l'accord serait
+        // refusé par la politique — et l'échec ne se verrait qu'en console, sur
+        // le site déployé, une fois le consentement donné.
+        analytics: true,
         connectSrc: [
           "'self'",
           'https://*.supabase.co',
