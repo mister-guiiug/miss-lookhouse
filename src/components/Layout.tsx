@@ -1,6 +1,5 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { Telescope } from 'lucide-react';
-import { ConsentBanner } from '@mister-guiiug/dev-pwa-config/react/consent-banner';
 import { usePageViews } from '@mister-guiiug/dev-pwa-config/react/use-page-views';
 import { ThemeToggle } from '@mister-guiiug/dev-pwa-config/react/theme-toggle';
 import { BottomNav } from './BottomNav';
@@ -32,15 +31,6 @@ export function Layout() {
       </header>
       <main className="app-main">
         <Outlet />
-        {/*
-          EN FLUX, au-dessus du pied de page : une `region`, pas une boîte
-          modale — elle ne recouvre rien et ne piège pas le focus. Ne rend RIEN
-          tant que `VITE_GA_MEASUREMENT_ID` n'est pas posée sur le dépôt : sans
-          identifiant il n'y a rien à mesurer, donc rien à demander.
-        */}
-        <ConsentBanner
-          gaMeasurementId={import.meta.env.VITE_GA_MEASUREMENT_ID}
-        />
         <Footer />
       </main>
       <BottomNav />
