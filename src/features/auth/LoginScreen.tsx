@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Telescope } from 'lucide-react';
 import { useActionGuard } from '@mister-guiiug/dev-pwa-config/react/use-action-guard';
+import { usePageViews } from '@mister-guiiug/dev-pwa-config/react/use-page-views';
 import { useAuth } from '../../auth/useAuth';
 
 type Mode = 'link' | 'signin' | 'signup';
@@ -17,6 +18,20 @@ type Mode = 'link' | 'signin' | 'signup';
  * faisaient déjà.
  */
 export function LoginScreen() {
+  /*
+   * L'ÉCRAN DE CONNEXION EST UNE VUE DE PAGE, et c'est ici qu'elle se déclare.
+   *
+   * `usePageViews` vit dans `Layout`, une route de `RoutedApp` — donc derrière
+   * `AuthGate`. Hors session, il ne s'exécute jamais. Mesuré en production le
+   * 16/09/2026, socle 4.20.0 en place : consentement accordé, bandeau parti,
+   * ZÉRO vue. Sur une app à connexion, c'est l'essentiel du trafic qui ne
+   * comptait pas.
+   *
+   * La vue est déclarée par l'écran plutôt que par une condition posée
+   * au-dessus de la porte : une condition dupliquée finit par diverger de la
+   * porte qu'elle imite.
+   */
+  usePageViews('/connexion');
   const { signIn, signUp, signInWithLink } = useAuth();
   const [mode, setMode] = useState<Mode>('link');
   const [email, setEmail] = useState('');
