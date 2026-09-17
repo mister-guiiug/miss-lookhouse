@@ -53,10 +53,6 @@ export function HeaderMenu() {
     };
   }, [open]);
 
-  const version =
-    typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev';
-  const build = typeof __APP_BUILD_ID__ !== 'undefined' ? __APP_BUILD_ID__ : '';
-
   return (
     <div className="menu" ref={ref}>
       <button
@@ -101,10 +97,6 @@ export function HeaderMenu() {
           >
             <RefreshCw size={16} aria-hidden /> Recharger / Mettre à jour
           </button>
-          <div className="menu-version">
-            Version {version}
-            {build ? ` · ${build}` : ''}
-          </div>
         </div>
       )}
     </div>
