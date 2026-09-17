@@ -11,8 +11,6 @@ import {
   repoUrl,
 } from '@mister-guiiug/dev-pwa-config/apps-catalog';
 
-declare const __APP_VERSION__: string;
-
 /** Le troisième choix est neuf : l'ancien sélecteur n'avait que clair/sombre. */
 const THEMES = [
   ['light', 'Clair'],
@@ -142,12 +140,6 @@ export function SettingsScreen() {
       <h2 className="section-title">À propos</h2>
       <div className="card">
         <div className="row spread">
-          <span>Version</span>
-          <span className="muted">
-            {typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev'}
-          </span>
-        </div>
-        <div className="row spread" style={{ marginTop: '0.3rem' }}>
           <span>Backend</span>
           <span className="badge badge-muted">{BACKEND}</span>
         </div>
