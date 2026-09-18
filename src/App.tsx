@@ -126,7 +126,8 @@ export function App() {
               donne les mêmes gouttières qu'au bandeau hors-ligne.
             */}
             <ConsentBanner
-              gaMeasurementId={import.meta.env.VITE_GA_MEASUREMENT_ID}
+              posthogKey={import.meta.env.VITE_POSTHOG_KEY}
+              loader={() => import('posthog-js/dist/module.slim.js')}
             />
             <AuthGate>
               {ready ? (

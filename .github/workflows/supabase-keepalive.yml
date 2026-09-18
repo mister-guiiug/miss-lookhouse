@@ -15,7 +15,7 @@ on:
 
 jobs:
   keepalive:
-    uses: mister-guiiug/dev-pwa-config/.github/workflows/pwa-supabase-keepalive.yml@v4
+    uses: mister-guiiug/dev-pwa-config/.github/workflows/pwa-supabase-keepalive.yml@v6
     # Aucun `with:` : la cible est `keep_alive`, le défaut du réutilisable.
     #
     # Ce bloc a porté `table: profiles` du 13 au 14/09/2026, le temps que ce

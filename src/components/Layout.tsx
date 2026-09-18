@@ -10,10 +10,12 @@ export function Layout() {
   const { pathname } = useLocation();
 
   /*
-   * UNE VUE DE PAGE PAR NAVIGATION. GA4 n'en envoie qu'une par chargement de
-   * document : sous `HashRouter`, toute la navigation de l'app serait invisible
-   * et la durée de session fausse. Le hook ne fait rien tant que le
-   * consentement n'est pas accordé — il se monte donc sans condition.
+   * UNE VUE DE PAGE PAR NAVIGATION — ni zéro, ni deux. Sans ce hook, sous
+   * `HashRouter`, toute la navigation de l'app serait invisible et la durée de
+   * session fausse ; et si on laissait PostHog compter lui-même, chaque
+   * navigation serait comptée DEUX fois. Le socle pose donc
+   * `capture_pageview: false`. Le hook ne fait rien tant que le consentement
+   * n'est pas accordé — il se monte donc sans condition.
    */
   usePageViews(pathname);
 
