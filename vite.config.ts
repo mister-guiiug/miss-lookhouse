@@ -48,6 +48,14 @@ export default defineConfig(({ command }) => {
             // est PRÉCHARGÉ : mesuré sur miss-uwh, 381,9 kB préchargés au
             // lieu de 227,2 — pour un total gzip identique à 0,1 kB près.
             if (norm.includes('/@sentry/')) return 'sentry';
+            // ET POSTHOG POUR LA MÊME RAISON, EN PLUS GRAVE. Sentry préchargé
+            // coûtait du poids ; PostHog préchargé casse une PROMESSE : l'ADR
+            // 0012 dit que rien n'est chargé avant l'accord, et le socle ne
+            // l'appelle qu'après. Sans cette ligne, la bibliothèque tombe
+            // dans `vendor`, qui est PRÉCHARGÉ — elle serait donc
+            // téléchargée chez un visiteur qui refuse. C'est `preloadGzipKb`
+            // qui le voit, jamais le total.
+            if (norm.includes('/posthog-js/')) return 'posthog';
             if (
               norm.includes('/vite-plugin-pwa/') ||
               norm.includes('/workbox-')
@@ -94,10 +102,10 @@ export default defineConfig(({ command }) => {
       // de carte viennent de partout.
       cspPlugin({
         dev: command === 'serve',
-        // `analytics` ouvre les hôtes de Google Tag Manager et de GA4. Sans
-        // lui, le script que `ConsentBanner` injecte APRÈS l'accord serait
-        // refusé par la politique — et l'échec ne se verrait qu'en console, sur
-        // le site déployé, une fois le consentement donné.
+        // `analytics` ouvre les hôtes de PostHog — le nuage EUROPÉEN (ADR
+        // 0012). Sans lui, l'ingestion que `ConsentBanner` déclenche APRÈS
+        // l'accord serait refusée par la politique — et l'échec ne se verrait
+        // qu'en console, sur le site déployé, une fois le consentement donné.
         analytics: true,
         connectSrc: [
           "'self'",
