@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 22.23.2
       - name: Régénérer le cœur Edge
         run: node scripts/build-edge-core.mjs
       - name: Vérifier que la copie commitée est à jour
