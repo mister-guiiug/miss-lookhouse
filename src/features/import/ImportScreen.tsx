@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Bookmark, Info, Upload } from 'lucide-react';
+import { GESTES, trackEvent } from '@mister-guiiug/dev-pwa-config/analytics';
 import { useAppStore, visibleSearches } from '../../store/useAppStore';
 import { BOOKMARKLET_HREF, BOOKMARKLET_SRC } from '../../ingestion/bookmarklet';
 
@@ -54,7 +55,30 @@ export function ImportScreen() {
     try {
       const r = await importPayload(payload, searchId || undefined);
       setResult(r);
+      /*
+       * L'IMPORT MANUEL EST LA COLLECTE DE CETTE APP. Elle n'aspire aucun
+       * portail : tout entre par ici, collé à la main. Savoir combien
+       * d'imports aboutissent — et combien ne retiennent rien — est la seule
+       * mesure de la promesse « collecte responsable ».
+       *
+       * `reussie` veut dire « quelque chose est entré ». Un JSON valide qui ne
+       * retient aucune annonce n'est pas un succès pour qui l'a collé : c'est
+       * un échec du format, et il se compte comme tel.
+       *
+       * NI LE CONTENU COLLÉ, NI LE NOMBRE D'ANNONCES, NI LA VEILLE VISÉE :
+       * l'URL d'une annonce dit ce qu'on cherche et où.
+       */
+      trackEvent(GESTES.OPERATION, {
+        nom: 'import',
+        etape: r.added + r.updated > 0 ? 'reussie' : 'echouee',
+      });
       if (r.added + r.updated > 0) setPayload('');
+    } catch (e) {
+      // Un payload illisible fait lever le connecteur. On le compte, et on le
+      // laisse repartir tel quel : ce n'est pas ici qu'on décide du sort des
+      // erreurs de cet écran.
+      trackEvent(GESTES.OPERATION, { nom: 'import', etape: 'echouee' });
+      throw e;
     } finally {
       setBusy(false);
     }

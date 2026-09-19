@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { MapPin } from 'lucide-react';
+import { GESTES, trackEvent } from '@mister-guiiug/dev-pwa-config/analytics';
 import { useAppStore } from '../../store/useAppStore';
 import { geocode } from '../../lib/geocoder';
 import type { LocalSearch, WatchFrequency } from '../../store/types';
@@ -148,6 +149,27 @@ export function SearchEditScreen() {
     };
     if (editing) updateSearch(editing.id, payload);
     else addSearch(payload);
+    /*
+     * POSER UNE VEILLE — le geste qui fonde l'app : sans recherche, il n'y a
+     * ni collecte, ni notification, ni rien à qualifier.
+     *
+     * NI LE NOM, NI LA VILLE, NI LE CODE POSTAL, NI LES COORDONNÉES, NI LES
+     * PRIX, NI LES MOTS-CLÉS. Une zone et un budget décrivent un projet de vie
+     * — et à deux champs près, ils désignent un foyer. Ce qui part tient en
+     * trois mesures fermées :
+     *
+     *   - `modifiee` sépare la veille qu'on crée de celle qu'on retouche ;
+     *   - `zone` dit COMMENT la zone est décrite (un polygone dessiné, un
+     *     rayon autour d'un point, ou rien que du texte) : l'éditeur de
+     *     polygone est chargé à part et coûte cher, on saura s'il sert ;
+     *   - `sources` est un NOMBRE de sources surveillées, entre zéro et cinq.
+     */
+    trackEvent(GESTES.CREATION, {
+      objet: 'veille',
+      modifiee: Boolean(editing),
+      zone: polygon ? 'polygone' : center ? 'rayon' : 'texte',
+      sources: sources.length,
+    });
     navigate('/recherches');
   };
 
