@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Share2, Trash2 } from 'lucide-react';
+import { GESTES, trackEvent } from '@mister-guiiug/dev-pwa-config/analytics';
 import { IS_SUPABASE } from '../../backend/config';
 import {
   listShares,
@@ -41,6 +42,15 @@ export function ShareSearch({ searchId }: { searchId: string }) {
     setMsg(null);
     try {
       await shareSearch(searchId, email);
+      /*
+       * PARTAGER UNE VEILLE avec quelqu'un — après `shareSearch`, qui lève sur
+       * une adresse inconnue ou un refus RLS.
+       *
+       * `shared` est le mot du socle : le partage a eu lieu. NI L'ADRESSE
+       * E-MAIL du destinataire, ni l'identifiant de la veille — c'est le
+       * carnet d'adresses de quelqu'un.
+       */
+      trackEvent(GESTES.PARTAGE, { resultat: 'shared' });
       setEmail('');
       reload();
     } catch (e) {

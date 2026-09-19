@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { GESTES, trackEvent } from '@mister-guiiug/dev-pwa-config/analytics';
 import { useAppStore } from '../../store/useAppStore';
 import { formatDate, formatPrice, nowMs, pricePerM2 } from '../../lib/format';
 import {
@@ -143,7 +144,23 @@ export function ListingDetailScreen() {
               key={s}
               type="button"
               className={`badge ${st?.status === s ? STATUS_META[s].cls : 'badge-muted'}`}
-              onClick={() => setStatus(listing.id, s)}
+              onClick={() => {
+                setStatus(listing.id, s);
+                /*
+                 * QUALIFIER À LA MAIN, la promesse du titre. Les neuf statuts
+                 * sont une liste fermée du schéma (`UserStatus`) : envoyer
+                 * lequel a été posé dit si les neuf servent, ou si trois
+                 * suffisaient.
+                 *
+                 * NI L'ANNONCE, NI SON PRIX, NI SON ADRESSE. Seul le statut
+                 * part — jamais ce qu'il qualifie.
+                 */
+                trackEvent(GESTES.OPERATION, {
+                  nom: 'qualification',
+                  etape: 'reussie',
+                  statut: s,
+                });
+              }}
             >
               {STATUS_META[s].label}
             </button>
