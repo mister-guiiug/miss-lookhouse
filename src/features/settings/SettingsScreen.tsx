@@ -1,11 +1,12 @@
 import { Download, LogOut, Mail, RotateCcw, Rss, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import type { User } from '@supabase/supabase-js';
 import { useThemeContext } from '@mister-guiiug/dev-pwa-config/react/theme-provider';
+import { useAuthContext } from '@mister-guiiug/dev-pwa-config/react/auth-provider';
 import { PushToggle } from './PushToggle';
 import { DangerZone } from './DangerZone';
 import { useAppStore } from '../../store/useAppStore';
 import { BACKEND, IS_SUPABASE } from '../../backend/config';
-import { useAuth } from '../../auth/useAuth';
 import {
   SPONSOR_URL,
   repoUrl,
@@ -24,7 +25,7 @@ export function SettingsScreen() {
   const themeState = useThemeContext();
   const data = useAppStore(s => s.data);
   const resetDemo = useAppStore(s => s.resetDemo);
-  const { user, signOut } = useAuth();
+  const { user, signOut } = useAuthContext<unknown, User>();
 
   const exportJson = () => {
     const blob = new Blob([JSON.stringify({ v: 1, data }, null, 2)], {

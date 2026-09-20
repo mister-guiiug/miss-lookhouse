@@ -26,16 +26,22 @@ import {
  * pas, et la connexion qui refuse d'aller au mur.
  */
 
-const signIn = vi.fn(() => Promise.resolve({ error: null }));
-const signInWithLink = vi.fn(() => Promise.resolve({ error: null }));
-vi.mock('./auth/useAuth', () => ({
-  useAuth: () => ({
+// Le contexte du socle, tel que l'écran le lit : les actions rendent
+// `{ ok, error }`, jamais une exception.
+const signIn = vi.fn(() => Promise.resolve({ ok: true, error: null }));
+const signInWithOtp = vi.fn(() => Promise.resolve({ ok: true, error: null }));
+vi.mock('@mister-guiiug/dev-pwa-config/react/auth-provider', () => ({
+  useAuthContext: () => ({
+    status: 'signed-out',
     ready: true,
+    signedIn: false,
+    session: null,
     user: null,
+    client: null,
     signIn,
-    signInWithLink,
+    signInWithOtp,
     signUp: vi.fn(() =>
-      Promise.resolve({ error: null, needsConfirmation: false })
+      Promise.resolve({ ok: true, error: null, needsConfirmation: false })
     ),
     signOut: vi.fn(),
   }),
@@ -67,7 +73,7 @@ const banner = () => document.querySelector('[data-dwc="connection-banner"]');
 afterEach(() => {
   cleanup();
   signIn.mockClear();
-  signInWithLink.mockClear();
+  signInWithOtp.mockClear();
 });
 
 describe('le shell dit qu’on est hors connexion — après un délai, pas avant', () => {
@@ -163,7 +169,12 @@ describe('la connexion refuse de partir hors ligne, et dit pourquoi', () => {
     expect(linkButton()).toBeEnabled();
     fireEvent.click(linkButton());
 
-    expect(signInWithLink).toHaveBeenCalledWith('famille@exemple.fr');
+    // Le lien ramène à l'origine SERVIE, jamais à une constante : le même
+    // bundle tourne en local et sur Pages.
+    expect(signInWithOtp).toHaveBeenCalledWith({
+      email: 'famille@exemple.fr',
+      emailRedirectTo: `${window.location.origin}${import.meta.env.BASE_URL}`,
+    });
     expect(signIn).not.toHaveBeenCalled();
   });
 
@@ -175,7 +186,7 @@ describe('la connexion refuse de partir hors ligne, et dit pourquoi', () => {
     fireEvent.click(passwordButton());
 
     expect(signIn).toHaveBeenCalledWith('famille@exemple.fr', 'motdepasse1');
-    expect(signInWithLink).not.toHaveBeenCalled();
+    expect(signInWithOtp).not.toHaveBeenCalled();
   });
 
   it('hors ligne : bouton désactivé ET motif affiché', () => {
@@ -201,7 +212,7 @@ describe('la connexion refuse de partir hors ligne, et dit pourquoi', () => {
     // le trou que `disabled` seul laisserait ouvert.
     fireEvent.submit(container.querySelector('form') as HTMLFormElement);
 
-    expect(signInWithLink).not.toHaveBeenCalled();
+    expect(signInWithOtp).not.toHaveBeenCalled();
     expect(signIn).not.toHaveBeenCalled();
   });
 });

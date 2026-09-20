@@ -5,9 +5,10 @@ import { ThemeProvider } from '@mister-guiiug/dev-pwa-config/react/theme-provide
 import { IconsProvider } from '@mister-guiiug/dev-pwa-config/react/icons-context';
 import { ToastProvider } from '@mister-guiiug/dev-pwa-config/react/toast';
 import { ConsentBanner } from '@mister-guiiug/dev-pwa-config/react/consent-banner';
+import { AuthProvider } from '@mister-guiiug/dev-pwa-config/react/auth-provider';
 import { useAppStore } from './store/useAppStore';
 import { THEME_COLOR, THEME_LEGACY_KEYS, THEME_STORAGE_KEY } from './theme';
-import { AuthProvider } from './auth/useAuth';
+import { authAdapter } from './auth';
 import { AuthGate } from './auth/AuthGate';
 import { SupabaseSync } from './backend/SupabaseSync';
 import { Layout } from './components/Layout';
@@ -29,6 +30,11 @@ import { MapScreen } from './features/map/lazyMapScreen';
 // DÉPLACÉ dans `features/map/lazyMapScreen` : le tableau de bord porte le seul
 // lien vers la carte et doit pouvoir déclencher le MÊME import pour prendre de
 // l'avance. Déclaré ici, le thunk lui était hors de portée.
+
+// UNE FOIS, au chargement du module : le fournisseur du socle recrée son client
+// dès que l'adaptateur change d'identité, et un adaptateur reconstruit à chaque
+// rendu se réabonnerait à chaque rendu. `null` en mode local.
+const adaptateur = authAdapter();
 
 function RoutedApp() {
   return (
@@ -115,7 +121,7 @@ export function App() {
             le message « supprimée · Annuler » doit survivre au changement
             d'écran. */}
         <ToastProvider>
-          <AuthProvider>
+          <AuthProvider adapter={adaptateur}>
             {/* AU-DESSUS de la garde, pas dedans : l'écran de connexion est le
                 premier endroit où la coupure fait mal, et c'est justement celui
                 qui n'affichait rien. */}
