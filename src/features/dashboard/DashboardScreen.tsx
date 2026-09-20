@@ -1,13 +1,7 @@
 import { Link } from 'react-router-dom';
 import { PwaInstallPrompt } from '@mister-guiiug/dev-pwa-config/react/pwa-install-prompt';
-import {
-  Bell,
-  CopyCheck,
-  List,
-  Map as MapIcon,
-  Search,
-  Upload,
-} from 'lucide-react';
+import { Bell, CopyCheck, List, Search, Upload } from 'lucide-react';
+import { MapLink } from '../map/MapLink';
 import { useAppStore, visibleSearches } from '../../store/useAppStore';
 import { formatPrice, timeAgo } from '../../lib/format';
 import { ScoreBadge, SourceBadge } from '../../components/ui';
@@ -76,9 +70,9 @@ export function DashboardScreen() {
         <Upload size={16} aria-hidden /> Importer des annonces
       </Link>
 
-      <Link to="/carte" className="btn" style={{ justifyContent: 'center' }}>
-        <MapIcon size={16} aria-hidden /> Voir la carte
-      </Link>
+      {/* Pas un simple `Link` : c'est le seul chemin vers la carte, et il doit
+          répondre avant que Leaflet soit arrivé. Voir `MapLink`. */}
+      <MapLink />
 
       <h2 className="section-title">Récemment vues / modifiées</h2>
       {recent.length === 0 ? (

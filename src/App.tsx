@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Monitor, Moon, Sun } from 'lucide-react';
 import { ThemeProvider } from '@mister-guiiug/dev-pwa-config/react/theme-provider';
@@ -24,10 +24,11 @@ import { SettingsScreen } from './features/settings/SettingsScreen';
 import { ImportScreen } from './features/import/ImportScreen';
 import { ProcessingScreen } from './features/processing/ProcessingScreen';
 import { ConnectorsScreen } from './features/connectors/ConnectorsScreen';
+import { MapScreen } from './features/map/lazyMapScreen';
 
-const MapScreen = lazy(() =>
-  import('./features/map/MapScreen').then(m => ({ default: m.MapScreen }))
-);
+// DÉPLACÉ dans `features/map/lazyMapScreen` : le tableau de bord porte le seul
+// lien vers la carte et doit pouvoir déclencher le MÊME import pour prendre de
+// l'avance. Déclaré ici, le thunk lui était hors de portée.
 
 function RoutedApp() {
   return (
@@ -53,6 +54,13 @@ function RoutedApp() {
             <Route
               path="/carte"
               element={
+                /* CE REPLI NE SE VOIT QUE SUR UN ATTERRISSAGE DIRECT sur
+                   `#/carte`. `HashRouter` enveloppe tout changement d'URL dans
+                   `startTransition`, et React 19 garde alors l'écran déjà
+                   affiché plutôt que de le remplacer : sur un clic venu du
+                   tableau de bord, il ne peut structurellement pas paraître.
+                   C'est `MapLink` qui répond au clic — ne pas chercher à
+                   « améliorer » ce repli en croyant le voir. */
                 <Suspense
                   fallback={
                     <div className="empty">Chargement de la carte…</div>
