@@ -1,6 +1,7 @@
 import { useTransition, type MouseEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Map as MapIcon } from 'lucide-react';
+import { usePrefetch } from '@mister-guiiug/dev-pwa-config/react/use-prefetch';
 import { chargeMapScreen } from './lazyMapScreen';
 
 /**
@@ -22,12 +23,16 @@ import { chargeMapScreen } from './lazyMapScreen';
  *    pixel ne bouge.
  *
  * CE QUI EST FAIT, ET CE QUI NE L'EST PAS. On précharge à l'INTENTION —
- * survol, tabulation, doigt posé — et non à l'inactivité. Le service worker
- * précharge déjà Leaflet de son côté (il est dans son manifeste) : doubler ce
- * travail par une requête concurrente n'apporterait rien et pourrait la
- * gêner. L'intention, elle, donne de l'avance précisément dans la fenêtre où
- * le cache du service worker n'est pas encore rempli — la première visite,
- * celle où le défaut se voit.
+ * survol, tabulation, doigt posé — et non à l'inactivité. C'est le socle qui
+ * s'en charge (`react/use-prefetch`) : ses écouteurs sont passifs, ne lancent
+ * le morceau qu'UNE fois, avalent l'échec — au clic, `lazy` redemandera le
+ * morceau et c'est lui qui portera l'erreur, dans son propre `Suspense` — et
+ * s'abstiennent quand le visiteur économise ses données ou navigue en 2G. Le
+ * service worker précharge déjà Leaflet de son côté (il est dans son
+ * manifeste) : doubler ce travail par une requête concurrente n'apporterait
+ * rien et pourrait la gêner. L'intention, elle, donne de l'avance précisément
+ * dans la fenêtre où le cache du service worker n'est pas encore rempli — la
+ * première visite, celle où le défaut se voit.
  *
  * Et la navigation passe par NOTRE transition : `enCours` reste vrai tant que
  * les morceaux ne sont pas arrivés, ce que react-router n'expose pas hors d'un
@@ -37,11 +42,9 @@ export function MapLink() {
   const navigate = useNavigate();
   const [enCours, demarre] = useTransition();
 
-  // Un échec est sans conséquence : au clic, `lazy` redemandera le morceau et
-  // c'est lui qui portera l'erreur, dans son propre `Suspense`.
-  const precharge = () => {
-    void chargeMapScreen().catch(() => {});
-  };
+  // Le socle déduplique sur l'IDENTITÉ du chargeur : `chargeMapScreen` est une
+  // constante de module, jamais une fonction écrite en ligne ici.
+  const { linkProps } = usePrefetch(chargeMapScreen);
 
   const versLaCarte = (e: MouseEvent<HTMLAnchorElement>) => {
     // On laisse le navigateur faire son travail quand le visiteur le lui
@@ -65,9 +68,7 @@ export function MapLink() {
       to="/carte"
       className="btn"
       style={{ justifyContent: 'center' }}
-      onPointerEnter={precharge}
-      onPointerDown={precharge}
-      onFocus={precharge}
+      {...linkProps}
       onClick={versLaCarte}
       aria-busy={enCours || undefined}
     >
