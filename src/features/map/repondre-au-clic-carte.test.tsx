@@ -29,10 +29,16 @@ import { MapLink } from './MapLink';
  * et le clic se voit.
  */
 
-const carte = vi.hoisted(() => ({ charge: vi.fn() }));
+const carte = vi.hoisted(() => ({
+  charge: vi.fn<() => Promise<unknown>>(),
+}));
 
 vi.mock('./lazyMapScreen', () => ({
-  chargeMapScreen: carte.charge,
+  // Un ACCESSEUR, pas une valeur : le préchargement du socle ne lance un
+  // chargeur qu'une fois par identité, et chaque test doit repartir du sien.
+  get chargeMapScreen() {
+    return carte.charge;
+  },
   MapScreen: () => null,
 }));
 
@@ -72,10 +78,11 @@ function monterFaceAUneCarteLente() {
 
 beforeEach(() => {
   cleanup();
-  carte.charge.mockReset();
-  // Un thunk qui ne se résout jamais : le préchargement ne doit RIEN changer
-  // à ce qui est affiché, et surtout pas naviguer.
-  carte.charge.mockImplementation(() => new Promise(() => {}));
+  // Un chargeur NEUF, pas un `mockReset` : le socle se souvient des chargeurs
+  // déjà lancés par leur identité, un chargeur remis à zéro resterait « déjà
+  // lancé ». Et qui ne se résout jamais : le préchargement ne doit RIEN
+  // changer à ce qui est affiché, et surtout pas naviguer.
+  carte.charge = vi.fn(() => new Promise<unknown>(() => {}));
 });
 
 describe('le lien vers la carte répond avant que la carte soit là', () => {
@@ -90,18 +97,38 @@ describe('le lien vers la carte répond avant que la carte soit là', () => {
     expect(lien).not.toHaveAttribute('aria-busy');
   });
 
-  it('précharge aussi au clavier et au doigt posé', () => {
+  it('précharge aussi au clavier', () => {
     const { lien } = monterFaceAUneCarteLente();
 
     // Tabuler jusqu'au bouton donne la même avance qu'un survol — sans quoi
     // seuls les visiteurs à la souris en profiteraient.
     fireEvent.focus(lien);
-    expect(carte.charge).toHaveBeenCalledTimes(1);
 
-    // Et sur un écran tactile, où rien ne survole, `pointerdown` précède le
-    // clic de quelques dizaines de millisecondes.
-    fireEvent.pointerDown(lien);
-    expect(carte.charge).toHaveBeenCalledTimes(2);
+    expect(carte.charge).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('tableau de bord')).toBeTruthy();
+  });
+
+  it('précharge au doigt posé', () => {
+    const { lien } = monterFaceAUneCarteLente();
+
+    // Sur un écran tactile, où rien ne survole, `touchstart` part dès que le
+    // doigt se pose — quelques dizaines de millisecondes avant le clic.
+    fireEvent.touchStart(lien);
+
+    expect(carte.charge).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('tableau de bord')).toBeTruthy();
+  });
+
+  it("ne demande le morceau qu'une fois, quelle que soit l'insistance", () => {
+    const { lien } = monterFaceAUneCarteLente();
+
+    // Survoler, tabuler, poser le doigt : trois intentions, UNE requête. C'est
+    // le socle qui tient ce compte, sur l'identité du chargeur.
+    fireEvent.pointerEnter(lien);
+    fireEvent.focus(lien);
+    fireEvent.touchStart(lien);
+
+    expect(carte.charge).toHaveBeenCalledTimes(1);
   });
 
   it("dit qu'il charge tant que la carte n'est pas arrivée", async () => {
