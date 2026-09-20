@@ -7,10 +7,10 @@
  * du miroir local + de la file. Ne fait RIEN en local.
  */
 import { useEffect, useRef, useState } from 'react';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient, User } from '@supabase/supabase-js';
+import { useAuthContext } from '@mister-guiiug/dev-pwa-config/react/auth-provider';
 import { getSupabase } from './supabaseClient';
 import { IS_SUPABASE } from './config';
-import { useAuth } from '../auth/useAuth';
 import { useAppStore } from '../store/useAppStore';
 import { onSync, type SyncIntent } from './syncBus';
 import {
@@ -57,7 +57,7 @@ function processIntent(
 }
 
 export function SupabaseSync() {
-  const { user } = useAuth();
+  const { user } = useAuthContext<unknown, User>();
   const hydrate = useAppStore(s => s.hydrate);
   const wipeLocal = useAppStore(s => s.wipeLocal);
   const [pull, setPull] = useState<PullStatus>('idle');

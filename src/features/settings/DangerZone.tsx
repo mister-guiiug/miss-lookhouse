@@ -20,16 +20,17 @@
  * toutes. Le rendu est conditionné par l'appelant ET par ce composant.
  */
 import { useState } from 'react';
+import type { User } from '@supabase/supabase-js';
 import { Trash2, TriangleAlert } from 'lucide-react';
 import { useActionGuard } from '@mister-guiiug/dev-pwa-config/react/use-action-guard';
-import { useAuth } from '../../auth/useAuth';
+import { useAuthContext } from '@mister-guiiug/dev-pwa-config/react/auth-provider';
 import { useAppStore } from '../../store/useAppStore';
 import { IS_SUPABASE } from '../../backend/config';
 import { deleteMyAccount } from '../../backend/account';
 import { clearPersistedQueues } from '../../backend/syncQueue';
 
 export function DangerZone() {
-  const { user, signOut } = useAuth();
+  const { user, signOut } = useAuthContext<unknown, User>();
   const wipeLocal = useAppStore(s => s.wipeLocal);
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState('');

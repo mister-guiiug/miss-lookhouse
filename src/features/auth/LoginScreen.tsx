@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Telescope } from 'lucide-react';
 import { useActionGuard } from '@mister-guiiug/dev-pwa-config/react/use-action-guard';
 import { usePageViews } from '@mister-guiiug/dev-pwa-config/react/use-page-views';
-import { useAuth } from '../../auth/useAuth';
+import { useAuthContext } from '@mister-guiiug/dev-pwa-config/react/auth-provider';
+import { adresseDeRetour } from '../../auth';
 
 type Mode = 'link' | 'signin' | 'signup';
 
@@ -32,7 +33,9 @@ export function LoginScreen() {
    * porte qu'elle imite.
    */
   usePageViews('/connexion');
-  const { signIn, signUp, signInWithLink } = useAuth();
+  // Les actions du socle rendent `{ ok, error }`, jamais une exception ; le
+  // message affiché reste celui de Supabase, tel quel, comme avant.
+  const { signIn, signUp, signInWithOtp } = useAuthContext();
   const [mode, setMode] = useState<Mode>('link');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -63,18 +66,26 @@ export function LoginScreen() {
     setInfo(null);
     try {
       if (mode === 'link') {
-        const { error } = await signInWithLink(email.trim());
-        if (error) setError(error);
+        // Un lien à usage unique, par e-mail : l'application ne voit passer
+        // aucun secret et n'en stocke aucun. La session arrivera par
+        // `onAuthStateChange` quand le lien sera ouvert.
+        const { error } = await signInWithOtp({
+          email: email.trim(),
+          emailRedirectTo: adresseDeRetour(),
+        });
+        if (error) setError(error.message);
         else setSentTo(email.trim());
       } else if (mode === 'signin') {
         const { error } = await signIn(email.trim(), password);
-        if (error) setError(error);
+        if (error) setError(error.message);
       } else {
-        const { error, needsConfirmation } = await signUp(
-          email.trim(),
-          password
-        );
-        if (error) setError(error);
+        // Confirmation e-mail activée sur le projet : aucune session n'est
+        // renvoyée, et le socle le dit par `needsConfirmation`.
+        const { error, needsConfirmation } = await signUp({
+          email: email.trim(),
+          password,
+        });
+        if (error) setError(error.message);
         else if (needsConfirmation)
           setInfo(
             'Compte créé. Vérifiez votre e-mail pour confirmer, puis connectez-vous.'

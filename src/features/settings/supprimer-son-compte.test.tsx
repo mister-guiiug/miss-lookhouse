@@ -45,15 +45,19 @@ vi.mock('../../backend/config', () => ({
   },
 }));
 
+// Le contexte du socle, tel que la carte le lit : un utilisateur, une action.
 const signOut = vi.fn(() => Promise.resolve());
-vi.mock('../../auth/useAuth', () => ({
-  useAuth: () => ({
+vi.mock('@mister-guiiug/dev-pwa-config/react/auth-provider', () => ({
+  useAuthContext: () => ({
+    status: auth.user ? 'signed-in' : 'signed-out',
     ready: true,
+    signedIn: auth.user !== null,
     session: null,
     user: auth.user,
+    client: null,
     signIn: vi.fn(),
     signUp: vi.fn(),
-    signInWithLink: vi.fn(),
+    signInWithOtp: vi.fn(),
     signOut,
   }),
 }));

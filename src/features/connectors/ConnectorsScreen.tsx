@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Trash2, Save, X, Power, FlaskConical } from 'lucide-react';
+import { useAuthContext } from '@mister-guiiug/dev-pwa-config/react/auth-provider';
 import { IS_SUPABASE } from '../../backend/config';
-import { useAuth } from '../../auth/useAuth';
 import {
   listConnectors,
   saveConnector,
@@ -77,7 +77,7 @@ function buildInput(form: FormState): ConnectorInput {
 }
 
 export function ConnectorsScreen() {
-  const { user } = useAuth();
+  const { user } = useAuthContext();
   const [list, setList] = useState<Connector[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
