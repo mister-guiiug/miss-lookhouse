@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { pwaSeoPlugin } from '@mister-guiiug/dev-pwa-config/vite-pwa-base';
 import { cspPlugin } from '@mister-guiiug/dev-pwa-config/vite-csp';
 import { versionPlugin } from '@mister-guiiug/dev-pwa-config/vite-version';
+import { NAVIGATE_FALLBACK_DENY_FILES } from '@mister-guiiug/dev-pwa-config/vite-pwa';
 
 const analyze = process.env.ANALYZE === '1';
 const { version } = JSON.parse(readFileSync('./package.json', 'utf-8')) as {
@@ -159,7 +160,12 @@ export default defineConfig(({ command }) => {
           // Handler Web Push (push/notificationclick) ajouté au SW généré.
           importScripts: ['push-sw.js'],
           // Le shell est mis en cache ; les appels API (Supabase) restent réseau.
-          navigateFallbackDenylist: [/^\/auth/, /supabase\.co/],
+          // Un fichier (sitemap.xml, llms.txt…) va au réseau, pas à index.html.
+          navigateFallbackDenylist: [
+            NAVIGATE_FALLBACK_DENY_FILES,
+            /^\/auth/,
+            /supabase\.co/,
+          ],
         },
         manifest: {
           id: basePath,
