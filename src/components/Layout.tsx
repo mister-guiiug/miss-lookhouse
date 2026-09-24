@@ -3,7 +3,6 @@ import { Telescope } from 'lucide-react';
 import { usePageViews } from '@mister-guiiug/dev-pwa-config/react/use-page-views';
 import { ThemeToggle } from '@mister-guiiug/dev-pwa-config/react/theme-toggle';
 import { BottomNav } from './BottomNav';
-import { Footer } from './Footer';
 import { HeaderMenu } from './HeaderMenu';
 
 export function Layout() {
@@ -33,7 +32,9 @@ export function Layout() {
       </header>
       <main className="app-main">
         <Outlet />
-        <Footer />
+        {/* PAS DE PIED DE PAGE ICI : la règle famille (06/09/2026) le veut sur
+            l'accueil et les Réglages seulement — voir DashboardScreen et
+            SettingsScreen. */}
       </main>
       <BottomNav />
     </div>

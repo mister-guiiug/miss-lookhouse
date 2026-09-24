@@ -5,6 +5,7 @@ import { MapLink } from '../map/MapLink';
 import { useAppStore, visibleSearches } from '../../store/useAppStore';
 import { formatPrice, timeAgo } from '../../lib/format';
 import { ScoreBadge, SourceBadge } from '../../components/ui';
+import { Footer } from '../../components/Footer';
 
 export function DashboardScreen() {
   const listings = useAppStore(s => s.data.listings);
@@ -105,6 +106,10 @@ export function DashboardScreen() {
           n'existe pas, donne la marche à suivre. Cadence du socle : au premier
           lancement, puis une fois par mois, trois fois. */}
       <PwaInstallPrompt />
+
+      {/* Le code source, le soutien et le signalement : ici et dans les
+          Réglages, nulle part ailleurs (règle famille du 06/09/2026). */}
+      <Footer />
     </>
   );
 }
