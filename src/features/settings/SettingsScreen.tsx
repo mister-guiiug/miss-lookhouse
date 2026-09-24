@@ -7,10 +7,7 @@ import { PushToggle } from './PushToggle';
 import { DangerZone } from './DangerZone';
 import { useAppStore } from '../../store/useAppStore';
 import { BACKEND, IS_SUPABASE } from '../../backend/config';
-import {
-  SPONSOR_URL,
-  repoUrl,
-} from '@mister-guiiug/dev-pwa-config/apps-catalog';
+import { Footer } from '../../components/Footer';
 
 /** Le troisième choix est neuf : l'ancien sélecteur n'avait que clair/sombre. */
 const THEMES = [
@@ -144,30 +141,19 @@ export function SettingsScreen() {
           <span>Backend</span>
           <span className="badge badge-muted">{BACKEND}</span>
         </div>
-        <div className="row" style={{ marginTop: '0.6rem' }}>
-          <a
-            className="btn"
-            href={repoUrl('miss-lookhouse')}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Code source
-          </a>
-          <a
-            className="btn"
-            href={SPONSOR_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Soutenir
-          </a>
-        </div>
+        {/* Le code source et le soutien ne sont plus ici en boutons : le pied
+            de page, en bas de l'écran, les porte avec la version et le
+            signalement — les mêmes que sur l'accueil. */}
       </div>
 
       {/* EN DERNIER, et séparée du reste : on ne tombe pas dessus en cherchant
           autre chose. Elle ne s'affiche qu'avec un compte — en mode local il
           n'y en a pas, et « Réinitialiser » efface déjà tout. */}
       <DangerZone />
+
+      {/* Le code source, le soutien et le signalement : ici et sur l'accueil,
+          nulle part ailleurs (règle famille du 06/09/2026). */}
+      <Footer />
     </>
   );
 }
