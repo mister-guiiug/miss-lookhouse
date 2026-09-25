@@ -5,10 +5,16 @@ import { buildClusters } from '../../domain/clustering';
 import type { SimilarityEdge } from '../../domain/clustering';
 import { BucketBadge } from '../../components/ui';
 import { formatPrice } from '../../lib/format';
+import { IS_SUPABASE } from '../../backend/config';
+import {
+  embeddingsActive,
+  useEmbeddingPreference,
+} from './embeddingPreference';
 
 export function SimilarScreen() {
   const listings = useAppStore(s => s.data.listings);
   const similarities = useAppStore(s => s.data.similarities);
+  const embeddingsChoisis = useEmbeddingPreference(s => s.enabled);
 
   const byId = useMemo(() => new Map(listings.map(l => [l.id, l])), [listings]);
 
@@ -30,6 +36,15 @@ export function SimilarScreen() {
         Regroupement par similarité (texte, prix, surface, géo, images). Le
         score et son détail sont explicables — pas de boîte noire.
       </p>
+      {/* Dire où le réglage agit : ces groupes viennent des arêtes de
+          l'ingestion, calculées par l'heuristique seule. */}
+      {embeddingsActive(embeddingsChoisis, IS_SUPABASE) && (
+        <p className="muted" style={{ fontSize: '0.8rem', margin: 0 }}>
+          La similarité par embeddings est activée : elle s’affiche sur la fiche
+          de chaque annonce, qui dit d’où vient chaque rapprochement. Les
+          groupes ci-dessous restent ceux de l’heuristique.
+        </p>
+      )}
 
       {clusters.length === 0 ? (
         <div className="empty">Aucun doublon probable détecté.</div>

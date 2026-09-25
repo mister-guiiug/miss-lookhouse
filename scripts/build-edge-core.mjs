@@ -5,8 +5,8 @@
 // ║ alors que le front est en imports SANS extension (résolution bundler)  ║
 // ║ + `composite: true` (incompatible avec allowImportingTsExtensions).    ║
 // ║ Plutôt que de toucher au front, on GÉNÈRE une copie Deno-compatible du  ║
-// ║ cœur (src/domain + src/ingestion/{pipeline,schema,fieldMap}) dans       ║
-// ║ supabase/functions/_shared/core, avec :                                ║
+// ║ cœur (src/domain + src/ingestion/{pipeline,schema,fieldMap} + la partie ║
+// ║ pure de `notify`, src/notify) dans supabase/functions/_shared/core :    ║
 // ║   • extensions `.ts` ajoutées aux imports/exports relatifs ;            ║
 // ║   • `zod` → `npm:zod@…` (Deno) ;                                        ║
 // ║   • en-tête « généré » (NE PAS éditer la copie, éditer la SOURCE).      ║
@@ -43,7 +43,12 @@ const ingestionFiles = [
 const siteFiles = readdirSync(join(ROOT, 'src/ingestion/sites'))
   .filter(f => f.endsWith('.ts') && !f.endsWith('.test.ts'))
   .map(f => `ingestion/sites/${f}`);
-const FILES = [...domainFiles, ...ingestionFiles, ...siteFiles];
+// La partie PURE du dispatch (composition de l'e-mail, statuts par canal) :
+// testée par vitest ici, exécutée par la fonction Edge `notify` là-bas.
+const notifyFiles = readdirSync(join(ROOT, 'src/notify'))
+  .filter(f => f.endsWith('.ts') && !f.endsWith('.test.ts'))
+  .map(f => `notify/${f}`);
+const FILES = [...domainFiles, ...ingestionFiles, ...siteFiles, ...notifyFiles];
 
 /** Transforme un module source en module Deno-compatible. */
 function toDeno(code, relFromSrc) {

@@ -4,6 +4,10 @@ import { useActionGuard } from '@mister-guiiug/dev-pwa-config/react/use-action-g
 import { usePageViews } from '@mister-guiiug/dev-pwa-config/react/use-page-views';
 import { useAuthContext } from '@mister-guiiug/dev-pwa-config/react/auth-provider';
 import { adresseDeRetour } from '../../auth';
+import {
+  MESSAGE_INSCRIPTION_SUR_INVITATION,
+  messageErreurConnexion,
+} from '../../auth/inscription';
 
 type Mode = 'link' | 'signin' | 'signup';
 
@@ -34,7 +38,8 @@ export function LoginScreen() {
    */
   usePageViews('/connexion');
   // Les actions du socle rendent `{ ok, error }`, jamais une exception ; le
-  // message affiché reste celui de Supabase, tel quel, comme avant.
+  // message affiché reste celui de Supabase, tel quel, comme avant — sauf le
+  // refus d'une inscription sur invitation (hook de 0018), dit en clair.
   const { signIn, signUp, signInWithOtp } = useAuthContext();
   const [mode, setMode] = useState<Mode>('link');
   const [email, setEmail] = useState('');
@@ -73,11 +78,13 @@ export function LoginScreen() {
           email: email.trim(),
           emailRedirectTo: adresseDeRetour(),
         });
-        if (error) setError(error.message);
+        // Une adresse inconnue passe par la création de compte : c'est ici
+        // que le refus « sur invitation » arrive le plus souvent.
+        if (error) setError(messageErreurConnexion(error));
         else setSentTo(email.trim());
       } else if (mode === 'signin') {
         const { error } = await signIn(email.trim(), password);
-        if (error) setError(error.message);
+        if (error) setError(messageErreurConnexion(error));
       } else {
         // Confirmation e-mail activée sur le projet : aucune session n'est
         // renvoyée, et le socle le dit par `needsConfirmation`.
@@ -85,7 +92,7 @@ export function LoginScreen() {
           email: email.trim(),
           password,
         });
-        if (error) setError(error.message);
+        if (error) setError(messageErreurConnexion(error));
         else if (needsConfirmation)
           setInfo(
             'Compte créé. Vérifiez votre e-mail pour confirmer, puis connectez-vous.'
@@ -181,15 +188,31 @@ export function LoginScreen() {
               </div>
             )}
 
-            {error && (
-              <p
-                role="alert"
-                className="badge badge-danger"
-                style={{ width: '100%', justifyContent: 'center' }}
-              >
-                {error}
-              </p>
-            )}
+            {error &&
+              (error === MESSAGE_INSCRIPTION_SUR_INVITATION ? (
+                // Trois lignes à lire, pas une pastille : un encadré.
+                <p
+                  role="alert"
+                  style={{
+                    margin: 0,
+                    padding: '0.6rem 0.75rem',
+                    border: '1px solid var(--danger)',
+                    borderRadius: 'var(--radius)',
+                    fontSize: '0.85rem',
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {error}
+                </p>
+              ) : (
+                <p
+                  role="alert"
+                  className="badge badge-danger"
+                  style={{ width: '100%', justifyContent: 'center' }}
+                >
+                  {error}
+                </p>
+              ))}
             {info && (
               <p className="muted" style={{ fontSize: '0.85rem' }}>
                 {info}

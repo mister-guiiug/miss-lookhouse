@@ -68,6 +68,13 @@ function DeliveryRow({ n }: { n: LocalNotification }) {
         cls: 'badge badge-muted',
       });
 
+    // E-mail (0017) : `skipped` — non demandé, non configuré sur le serveur,
+    // adresse non confirmée — ne s'affiche pas, comme pour les autres canaux.
+    if (ch?.email === 'sent')
+      chips.push({ key: 'e', text: 'e-mail ✓', cls: 'badge badge-ok' });
+    else if (ch?.email === 'failed')
+      chips.push({ key: 'e', text: 'e-mail ✗', cls: 'badge', style: DANGER });
+
     if (chips.length === 0)
       chips.push({
         key: 'none',

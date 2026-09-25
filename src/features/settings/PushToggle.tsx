@@ -69,6 +69,7 @@ export function PushToggle() {
       const parts = [
         `push : ${d?.pushSent ?? 0}`,
         `webhook : ${d?.webhookSent ?? 0}`,
+        `e-mail : ${d?.emailSent ?? 0}`,
       ];
       // Rafraîchit le centre de notifications pour y refléter la notif de test
       // (et son statut de livraison) sans attendre une reconnexion.

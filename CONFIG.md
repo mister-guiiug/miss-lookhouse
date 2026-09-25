@@ -4,9 +4,17 @@ _Ce que le dépôt attend de GitHub pour fonctionner, et qui doit le poser.
 Relevé du **06/09/2026** ; la règle du parc est dans
 [`dev-pwa-config/PARAMETRAGE.md`](https://github.com/mister-guiiug/dev-pwa-config/blob/main/PARAMETRAGE.md)._
 
+> ✅ **Réglé le 14/09/2026.** Les trois secrets sont posés : le workflow
+> « Supabase migrations » passe depuis (exécutions réussies du 14/09 et du
+> 19/09), et `0011_keep_alive` / `0014_keep_alive_privileges` sont en base —
+> voir le commentaire de `.github/workflows/supabase-keepalive.yml` (PR #99).
+> **Conséquence : toute migration fusionnée sur `main` part en production.**
+> La suite est le relevé du 06/09, gardé comme historique et comme marche à
+> suivre si les secrets devaient être reposés.
+
 ---
 
-## 🔴 En l'état : les migrations ne sont PAS appliquées
+## 🔴 Relevé du 06/09/2026 : les migrations n'étaient PAS appliquées
 
 **Mesure du 06/09/2026.** Le workflow `Supabase migrations` a échoué à **ses
 huit exécutions** depuis juin 2026 — aucune réussite :
