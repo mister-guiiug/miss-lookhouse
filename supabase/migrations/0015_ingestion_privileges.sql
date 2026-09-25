@@ -1,0 +1,21 @@
+-- Miss LookHouse — 0015 — seul pg_cron déclenche l'ingestion.
+--
+-- LE DÉFAUT CORRIGÉ. `lh_trigger_ingestion()` (0004) est `security definer` :
+-- elle lit l'URL et le jeton de l'Edge Function `ingest-run` dans le coffre
+-- (`vault.decrypted_secrets`), puis l'appelle par `pg_net`. Elle est faite
+-- pour le cron horaire, et pour lui seul. Mais aucun privilège ne lui avait
+-- été retiré, et une fonction neuve de `public` arrive exécutable par
+-- `anon` et `authenticated`. N'importe qui muni de la clé anon (publique :
+-- elle est dans le bundle de la PWA) pouvait donc lancer
+-- `POST /rest/v1/rpc/lh_trigger_ingestion` en boucle. Chaque appel déclenche
+-- un passage d'ingestion complet : invocations d'Edge Function, requêtes vers
+-- les sources surveillées, écritures en base. Relevé le 25/09/2026, dans une
+-- revue des fonctions `security definer` du parc.
+--
+-- Le cron n'est pas concerné : il s'exécute sous le rôle qui l'a programmé,
+-- `postgres`, propriétaire de la fonction. `service_role` garde son droit :
+-- c'est la voie d'administration, pour relancer une ingestion à la main.
+--
+-- Rejouable sans effet de bord.
+
+revoke execute on function public.lh_trigger_ingestion() from public, anon, authenticated;

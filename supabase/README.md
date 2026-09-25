@@ -323,7 +323,8 @@ Un éventuel jeton d'API est un **secret d'Edge Function** référencé par
 
 Stocker l'URL de la fonction et le jeton dans le **Vault**, puis la migration
 `0004` programme l'appel horaire (`lh_trigger_ingestion`). Si les secrets sont
-absents, la fonction de déclenchement est un **no-op** inoffensif.
+absents, la fonction de déclenchement est un **no-op** inoffensif. Depuis
+`0015`, seuls le cron (`postgres`) et `service_role` peuvent l'exécuter.
 
 ```sql
 -- À exécuter une fois (Dashboard → SQL), avec vos valeurs :
