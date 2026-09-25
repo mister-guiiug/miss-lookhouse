@@ -4,10 +4,16 @@ name: Edge core sync
 # Si src/domain ou src/ingestion change sans régénération, front et Edge
 # divergent silencieusement. Ce job régénère et échoue si la copie commitée
 # n'est pas à jour. Le générateur n'a aucune dépendance npm (node pur).
+#
+# `package.json` EST UNE SOURCE DU GÉNÉRATEUR : il y lit la plage de `zod` pour
+# écrire l'import `npm:zod@…` de la copie. Sans lui dans les chemins, une montée
+# de zod par Renovate passait sans ce job, et la copie commitée est restée en
+# `^4.0.0` quand le dépôt était en `^4.6.5` (relevé le 25/09/2026).
 
 on:
   pull_request:
     paths:
+      - 'package.json'
       - 'src/domain/**'
       - 'src/ingestion/pipeline.ts'
       - 'src/ingestion/schema.ts'

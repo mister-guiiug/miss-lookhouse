@@ -6,7 +6,7 @@
  * (JSON d'annonce) et le normalise en `CanonicalListing`. Toute donnée externe
  * passe par ici avant d'entrer dans le système.
  */
-import { z } from 'npm:zod@^4.0.0';
+import { z } from 'npm:zod@^4.6.5';
 import type { CanonicalListing } from '../domain/types.ts';
 import {
   fnv1aHex,
