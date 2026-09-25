@@ -52,6 +52,27 @@ enable_signup = true
 enable_confirmations = true
 secure_password_change = true
 
+# SMTP personnalisé — supabase/README.md §4.2. Le service intégré n'écrit qu'aux
+# membres de l'équipe du projet, 2 messages par heure. En production, il se
+# règle au tableau de bord (Authentication › Emails › SMTP Settings) ; ce bloc
+# ne vaut que pour la pile locale. Valeurs lues dans l'environnement, jamais
+# écrites ici.
+# [auth.email.smtp]
+# enabled = true
+# host = "smtp.votre-fournisseur.example"
+# port = 587
+# user = "env(SMTP_USER)"
+# pass = "env(SMTP_PASS)"
+# admin_email = "no-reply@votre-domaine.example"
+# sender_name = "Miss LookHouse"
+
+# Politique d'inscription (migration 0018) — supabase/README.md §4.1. INACTIVE
+# tant que ce bloc reste commenté (en local) et que le hook n'est pas branché
+# au tableau de bord (Authentication › Hooks, en production).
+# [auth.hook.before_user_created]
+# enabled = true
+# uri = "pg-functions://postgres/public/lh_before_user_created"
+
 # MFA TOTP (Pro plan) — recommandé pour durcir l'accès.
 [auth.mfa.totp]
 enroll_enabled = false

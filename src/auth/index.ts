@@ -141,9 +141,11 @@ export function authAdapter(): SupabaseAuthAdapter | null {
  * (Authentication → URL Configuration), qui ne contient que localhost:3000 à
  * la création — sinon le lien part et n'arrive nulle part.
  *
- * L'inscription reste libre : le socle ne transmet pas `shouldCreateUser`, et
- * le SDK le vaut `true` par défaut — une adresse inconnue reçoit aussi son
- * lien, qui crée le compte, comme avant.
+ * Le client ne restreint pas l'inscription : le socle ne transmet pas
+ * `shouldCreateUser`, et le SDK le vaut `true` par défaut — une adresse
+ * inconnue demande aussi son lien, qui crée le compte. C'est le SERVEUR qui
+ * tranche, par le hook « Before User Created » (migration 0018) quand
+ * l'exploitant l'active ; son refus est dit en clair par `auth/inscription`.
  */
 export function adresseDeRetour(): string {
   return `${window.location.origin}${import.meta.env.BASE_URL}`;

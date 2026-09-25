@@ -171,9 +171,8 @@ export function computeSimilarity(
   }
 
   // 6) Géographie
-  let geoSim: number | null = null;
   if (a.lat != null && a.lng != null && b.lat != null && b.lng != null) {
-    geoSim = geoSimilarity(
+    const geoSim = geoSimilarity(
       { lat: a.lat, lng: a.lng },
       { lat: b.lat, lng: b.lng },
       options.geoToleranceM
@@ -211,28 +210,46 @@ export function computeSimilarity(
     });
   }
 
+  return finalizeSimilarity(factors, thresholds);
+}
+
+/**
+ * Termine un calcul à partir de facteurs DÉJÀ MESURÉS : renormalise les poids
+ * sur les facteurs comparables, arrondit les contributions, classe, explique.
+ *
+ * Exportée pour le mélange avec les embeddings (`embedding.ts`), qui ajoute un
+ * facteur à ceux de l'heuristique : une seule règle de classement — y compris
+ * la promotion par l'image, qui lit les facteurs `images` et `géo` —, quel que
+ * soit le nombre de signaux. Les facteurs reçus ne sont pas modifiés.
+ */
+export function finalizeSimilarity(
+  factors: SimilarityFactor[],
+  thresholds: SimilarityThresholds = DEFAULT_THRESHOLDS
+): SimilarityResult {
   // Renormalisation des poids sur les facteurs comparables.
   const totalWeight = factors.reduce((sum, f) => sum + f.weight, 0);
   let score = 0;
-  for (const f of factors) {
+  const scored = factors.map(f => {
     const contribution =
       totalWeight > 0 && f.similarity !== null
         ? (f.weight / totalWeight) * f.similarity * 100
         : 0;
-    f.contribution = Math.round(contribution * 10) / 10;
     score += contribution;
-  }
+    return { ...f, contribution: Math.round(contribution * 10) / 10 };
+  });
   const finalScore = Math.round(score);
+  const imgSim = scored.find(f => f.factor === 'images')?.similarity ?? null;
+  const geoSim = scored.find(f => f.factor === 'géo')?.similarity ?? null;
   const bucket = bucketFor(finalScore, imgSim, geoSim, thresholds);
 
   // Explication : les deux facteurs qui pèsent le plus.
-  const top = [...factors]
+  const top = [...scored]
     .sort((x, y) => y.contribution - x.contribution)
     .slice(0, 2)
     .map(f => f.detail);
   const reason = `${labelForBucket(bucket)} (${finalScore}/100) — ${top.join(' ; ')}`;
 
-  return { score: finalScore, bucket, factors, reason };
+  return { score: finalScore, bucket, factors: scored, reason };
 }
 
 export function labelForBucket(bucket: SimilarityBucket): string {

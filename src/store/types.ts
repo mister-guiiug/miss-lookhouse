@@ -1,5 +1,6 @@
 /** Types orientés UI/état local (miroir simplifié du schéma Supabase). */
 import type { CanonicalListing, SimilarityBucket } from '../domain/types';
+import type { ChannelStatus } from '../notify/delivery';
 
 export type UserStatus =
   | 'a_revoir'
@@ -67,16 +68,23 @@ export interface LocalSearch {
   lastRunAt?: string | null;
 }
 
-/** Issue d'un canal de livraison (cf. notify / migration 0009). */
-export type NotificationChannelStatus =
-  'sent' | 'partial' | 'failed' | 'skipped' | 'no_subscription';
+/**
+ * Issue d'un canal de livraison (cf. notify / migration 0009). Le même
+ * vocabulaire que la fonction Edge qui l'écrit : `src/notify/delivery.ts`.
+ */
+export type NotificationChannelStatus = ChannelStatus;
 
-/** Résumé de livraison d'une notification, écrit par la fonction `notify`. */
+/**
+ * Résumé de livraison d'une notification, écrit par la fonction `notify`.
+ * Tout est facultatif : les lignes antérieures à un canal ne le portent pas
+ * (l'e-mail n'existe que depuis 0017).
+ */
 export interface NotificationDelivery {
   at?: string;
   channels?: {
     webhook?: NotificationChannelStatus;
     push?: NotificationChannelStatus;
+    email?: NotificationChannelStatus;
   };
   pushSent?: number;
   pushFailed?: number;

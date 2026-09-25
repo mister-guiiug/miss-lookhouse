@@ -207,6 +207,13 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+/* Les interrupteurs en pastille (réglages) : grisés quand ils ne peuvent rien,
+   mais toujours atteignables — leur description dit pourquoi. */
+.badge[role='switch'][aria-disabled='true'],
+.badge[role='switch']:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 
 /* ── Zone dangereuse (suppression de compte) ── */
 .danger-zone {

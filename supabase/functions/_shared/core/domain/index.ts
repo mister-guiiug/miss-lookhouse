@@ -9,6 +9,7 @@ export * from './text.ts';
 export * from './geo.ts';
 export * from './imageHash.ts';
 export * from './similarity.ts';
+export * from './embedding.ts';
 export * from './scoring.ts';
 export * from './priceHistory.ts';
 export * from './clustering.ts';

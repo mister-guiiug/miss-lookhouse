@@ -2,8 +2,9 @@
 // ║ Edge Function `notify-test` — envoie une notification de TEST à soi.    ║
 // ║ Appelée par l'utilisateur (JWT, verify_jwt ACTIVÉ) depuis les réglages : ║
 // ║ crée une notification pour SON propre compte puis déclenche son dispatch ║
-// ║ immédiat via `notify` (webhook + web push), pour valider la chaîne de    ║
-// ║ bout en bout et rendre visible le statut de livraison. N'envoie qu'à soi.║
+// ║ immédiat via `notify` (webhook + web push + e-mail), pour valider la     ║
+// ║ chaîne de bout en bout et rendre visible le statut de livraison.         ║
+// ║ N'envoie qu'à soi.                                                       ║
 // ╚══════════════════════════════════════════════════════════════════════╝
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { cors, json } from '../_shared/cors.ts';

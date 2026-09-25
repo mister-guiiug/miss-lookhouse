@@ -6,6 +6,7 @@ export * from './text';
 export * from './geo';
 export * from './imageHash';
 export * from './similarity';
+export * from './embedding';
 export * from './scoring';
 export * from './priceHistory';
 export * from './clustering';

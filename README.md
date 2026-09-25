@@ -28,9 +28,11 @@ Zustand + Zod, config partagée `@mister-guiiug/dev-pwa-config`).
   lots, garde anti-dérive du cœur Edge), **cœur métier partagé front↔Edge**,
   **Web Push** (VAPID), **connecteurs `authorized_api`** (moteur générique +
   dry-run), **prix de référence DVF**, **partage de recherches** (lecture),
-  **statut de livraison** des notifications. Reste : **éprouver le push réel**
-  (navigateur installé), **e-mail/SMTP** et la **politique d'inscription**. Voir
-  _Backlog_.
+  **statut de livraison** des notifications, **canal e-mail** (opt-in),
+  **similarité par embeddings** (option) et **politique d'inscription** (hook,
+  sur invitation par défaut). Reste : **éprouver le push réel** (navigateur
+  installé), et les **gestes d'exploitation** qui activent ces trois derniers
+  — voir _Ce qui reste_.
 
 ## ✨ Ce qui est déjà là
 
@@ -49,10 +51,18 @@ Zustand + Zod, config partagée `@mister-guiiug/dev-pwa-config`).
   non-lu), **vérification métier** (checklist / confiance / anomalies), **journal
   des traitements**, import, réglages + menu d'en-tête (version / forcer la MAJ).
 - **Backend Supabase opérationnel** : schéma normalisé + **RLS deny-by-default** +
-  audit + planification (`supabase/migrations` `0001→0009`), Edge Functions
-  `ingest-run` (cron horaire, **cœur partagé**), `notify` (dispatch-once :
-  webhook + **Web Push** VAPID + **statut de livraison**), `dvf` (prix au m²),
-  `connector-test` (dry-run) et `notify-test` (notification de test).
+  audit + planification (`supabase/migrations` `0001→0018`), Edge Functions
+  `ingest-run` (cron horaire, **cœur partagé**), `embed` (embeddings
+  `gte-small`, appelée en fin d'ingestion), `notify` (dispatch-once : webhook +
+  **Web Push** VAPID + **e-mail** + **statut de livraison**), `dvf` (prix au
+  m²), `connector-test` (dry-run) et `notify-test` (notification de test).
+- **Similarité par embeddings** (option, désactivée par défaut) : pgvector,
+  visibilité calquée sur celle des annonces, RPC des voisins sous la RLS ; le
+  cosinus devient un facteur de plus de l'heuristique (poids 0,2), et la fiche
+  d'une annonce dit d'où vient chaque rapprochement.
+- **Politique d'inscription** : `open` / `invite` (défaut) et liste d'adresses,
+  tranchées par un hook « Before User Created » — **inactif tant que
+  l'exploitant ne l'a pas branché**.
 - **Cœur métier partagé front↔Edge** : `supabase/functions/_shared/core` est
   **généré** depuis `src/` (`npm run build:edge-core`) → la même normalisation et
   le même plan d'ingestion côté serveur, avec **garde anti-dérive** en CI.
@@ -63,8 +73,10 @@ Zustand + Zod, config partagée `@mister-guiiug/dev-pwa-config`).
   dépôt offline-first** : file de synchro **persistante** (rejeu / dead-letter),
   pull → hydrate / push, bascule `local` ↔ `supabase` par variable d'env.
 - **Géocodage** Base Adresse Nationale (officiel, gratuit, sans clé).
-- **91 tests** unitaires (cœur métier, ingestion, mappers, géocodeur, file de
-  synchro, pagination du dépôt).
+- **240 tests** unitaires (Vitest : cœur métier, mélange des embeddings,
+  ingestion, composition des e-mails, mappers, géocodeur, file de synchro,
+  écrans) et **6 fichiers pgTAP** joués en CI (RLS, `security definer`,
+  embeddings, opt-in e-mail, hook d'inscription).
 
 ## 🚧 Ce qui reste (honnêteté)
 
@@ -72,14 +84,53 @@ Zustand + Zod, config partagée `@mister-guiiug/dev-pwa-config`).
   Service Worker, **statut de livraison**) est livré mais **non validé de bout en
   bout** — exige un navigateur **installé** (iOS ≥ 16.4 en PWA installée). Un
   bouton **« Notification test »** (réglages) déclenche un envoi immédiat à soi.
-- **E-mail** dans `notify` : canal **non câblé** (seuls webhook + push le sont).
-  L'ouverture publique demande un **SMTP custom** (l'e-mail Supabase par défaut
-  est plafonné) et une **politique d'inscription** (ouverte vs comptes manuels).
+- **E-mail** dans `notify` : **câblé** (opt-in dans les Réglages, adresse du
+  compte confirmée, API compatible Resend), mais **inerte tant que ses secrets
+  ne sont pas posés** (le canal est alors `skipped`). Et **`notify` n'est
+  appelée par aucun cron** : aujourd'hui, seule la « Notification test » la
+  déclenche — e-mail, webhook et push compris. La planifier est une décision à
+  part, qui demande d'abord d'estampiller l'arriéré de notifications jamais
+  dispatchées (voir `supabase/README.md` §5).
+- **Politique d'inscription** : livrée (`invite` par défaut, liste d'adresses),
+  mais **sans effet tant que le hook n'est pas branché** — c'est ce geste qui
+  choisit la politique. L'**ouverture publique** demande aussi un **SMTP
+  personnalisé** : le service d'e-mail intégré de Supabase n'écrit qu'aux
+  membres de l'équipe du projet, 2 messages par heure — le lien de connexion
+  n'atteindrait personne d'autre.
+- **Embeddings** : livrés **en option**, avec leurs limites. `gte-small` est
+  entraîné surtout sur l'anglais : bon pour les doublons et les republications
+  (textes quasi identiques), **pas** pour la similarité de sens fine entre
+  annonces françaises. Le poids (0,2) et le plancher de cosinus (0,85) sont
+  posés a priori, non calibrés sur un corpus. L'index HNSW est approximatif, et
+  la RLS filtre ses candidats après lui. Le signal s'affiche sur la **fiche**
+  d'une annonce ; l'écran « Doublons » reste celui de l'heuristique.
 - **Connecteurs par source réelle** : le moteur générique et le dry-run existent,
   mais brancher leboncoin / SeLoger / … reste **suspendu à l'existence d'une
   API/flux autorisé** (voir hypothèses).
 - **Dette technique** (non bloquante) : typage Supabase complet
-  (`database.types.ts`), tests des helpers Edge (DVF), embeddings pgvector.
+  (`database.types.ts`), tests des helpers Edge (DVF).
+
+### Les gestes qui restent à l'exploitant, dans l'ordre
+
+Le dépôt ne déploie aucune Edge Function et ne pose aucun secret. Les
+migrations `0016`→`0018`, elles, partent en production à la fusion (CI).
+
+1. **Déployer `embed` et `notify`** (après la fusion et le passage des
+   migrations) : `supabase functions deploy embed --no-verify-jwt` et
+   `supabase functions deploy notify --no-verify-jwt` ; redéployer aussi
+   `ingest-run` (qui appelle désormais `embed`). Rappeler `embed` à la main
+   pour résorber l'arriéré — `supabase/README.md` §5.
+2. **Poser les secrets e-mail** de `notify` : `EMAIL_API_KEY`, `EMAIL_FROM`
+   (et, au besoin, `EMAIL_API_URL`, `APP_URL`), par
+   `supabase secrets set --env-file` depuis un fichier hors du dépôt —
+   `supabase/README.md` §5.
+3. **Activer le hook et choisir le mode** : Authentication › Hooks › « Before
+   User Created » › `public.lh_before_user_created` ; `invite` est déjà en place
+   (sinon `update public.app_settings set signup_mode = 'open'`) ; remplir
+   `public.signup_allowlist` — `supabase/README.md` §4.1.
+4. **Configurer le SMTP** personnalisé : Authentication › Emails › SMTP
+   Settings, puis relever la limite dans Rate Limits — `supabase/README.md`
+   §4.2.
 
 ## ⚠️ Hypothèses & incertitudes (rien d'inventé)
 
@@ -107,7 +158,9 @@ Zustand + Zod, config partagée `@mister-guiiug/dev-pwa-config`).
 ┌─────────────────────────── Supabase ────────────────▼──────────────────────────┐
 │  PostgreSQL : schéma normalisé + RLS deny-by-default + audit (triggers)         │
 │  pg_cron (horaire) → pg_net → Edge Function `ingest-run` (service_role)          │
-│  Edge `notify` (webhook + Web Push VAPID + statut) · `dvf` · `*-test`            │
+│  Edge `notify` (webhook + Web Push VAPID + e-mail + statut) · `dvf` · `*-test`   │
+│  Edge `embed` (gte-small, en fin d'ingestion) → pgvector, index HNSW, RLS        │
+│  Hook Auth « Before User Created » → inscription open / invite (si branché)      │
 │  Storage privé `listing-media`                                                   │
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -151,15 +204,17 @@ techniques (migrations, RLS, planification, Edge Functions, secrets) :
 - **Build de production** : lit `.env.production` (versionné, **valeurs publiques
   uniquement** ; la RLS arbitre tous les accès).
 
-> Les secrets (`service_role`, mot de passe DB, `INGEST_TOKEN`, clé VAPID privée)
-> ne vivent **jamais** dans le dépôt — uniquement dans les secrets Supabase /
-> Edge Functions.
+> Les secrets (`service_role`, mot de passe DB, `INGEST_TOKEN`, clé VAPID
+> privée, clé d'API e-mail) ne vivent **jamais** dans le dépôt — uniquement
+> dans les secrets Supabase / Edge Functions.
 
-> ⚠️ **Les migrations ne sont pas appliquées par la CI.** Le workflow
-> `Supabase migrations` a échoué à ses **huit** exécutions depuis juin 2026 :
-> le dépôt n'a **aucun secret**. La marche à suivre — les trois secrets à poser,
-> ou la commande locale à défaut — est dans **[`CONFIG.md`](CONFIG.md)**, qui
-> dit aussi ce que cela change pour l'utilisateur aujourd'hui.
+> ⚠️ **Les migrations partent en production à la fusion.** Le workflow
+> `Supabase migrations` applique `supabase/migrations/**` au projet hébergé à
+> chaque fusion sur `main` : ses secrets sont posés depuis le 14/09/2026, et il
+> passe depuis (après huit échecs de juin au 13/09, dont l'historique est dans
+> **[`CONFIG.md`](CONFIG.md)**). Une migration doit donc être additive,
+> rejouable et couverte par `supabase/tests/` avant d'être fusionnée. Les Edge
+> Functions, elles, ne sont déployées par aucun workflow.
 
 ## 🌐 Déploiement (GitHub Pages)
 
@@ -195,7 +250,7 @@ connexion). Lancer `npx prettier --write .` avant tout commit (la CI vérifie
 - [~] Connecteurs `authorized_api` : moteur générique + **dry-run** livrés ;
   brancher une **source réelle** reste suspendu à une API autorisée
 - [x] **Web Push (VAPID)** + **statut de livraison** (à éprouver navigateur
-      installé) · e-mail : à câbler
+      installé) · **e-mail** : câblé (opt-in), secrets à poser
 - [x] **Cœur métier partagé** front ↔ Edge Functions (`_shared/core`, généré)
 - [x] **Prix de référence DVF** (Edge `dvf`, prix au m²)
 
@@ -203,10 +258,15 @@ connexion). Lancer `npx prettier --write .` avant tout commit (la CI vérifie
 
 - [x] Carte interactive (marqueurs + zones)
 - [x] Dessin de **polygone** de zone sur la carte (`ZonePolygonEditor`)
-- [ ] Similarité par **embeddings** (pgvector) en option (après l'heuristique)
+- [x] Similarité par **embeddings** (pgvector, `gte-small`) en option, après
+      l'heuristique — sur la fiche d'une annonce ; fonction `embed` à déployer
 - [x] **Partage de recherches** (lecture) · multi-zones / rôles d'équipe : à venir
-- [x] **Statut de livraison** des notifications (par canal) · dashboards : à venir
-- [ ] **SMTP custom** + politique d'inscription (ouverture publique)
+- [x] **Statut de livraison** des notifications (par canal, e-mail compris) ·
+      dashboards : à venir
+- [x] **Politique d'inscription** (`invite` par défaut, liste d'adresses, hook
+      « Before User Created ») — livrée, **à activer** par l'exploitant
+- [~] **SMTP custom** : documenté (`supabase/README.md` §4.2), **reste à
+  configurer** au tableau de bord — préalable à l'ouverture publique
 
 ## 🧪 Tests
 
@@ -215,26 +275,36 @@ npm test
 ```
 
 Couvrent : normalisation FR, similarité textuelle/géo/image, scoring, deltas de
-prix, clustering, **plan d'ingestion** (nouveau vs maj, baisse de prix, recyclage,
-exclusion hors zone), **mappers** Supabase (dont **statut de livraison**),
-**géocodeur** BAN, **file de synchro** et **pagination du dépôt**.
+prix, clustering, **mélange des embeddings** (poids, plancher, idempotence),
+**plan d'ingestion** (nouveau vs maj, baisse de prix, recyclage, exclusion hors
+zone), **composition et statuts de l'e-mail** de `notify`, **mappers** Supabase
+(dont **statut de livraison**), **géocodeur** BAN, **file de synchro**,
+**pagination du dépôt** et les écrans (réglages, refus d'inscription sur
+invitation, suppression de compte…).
+
+Les tests **pgTAP** (`supabase/tests/`) ne tournent qu'en CI (workflow
+`Supabase tests`) : le poste n'a pas de Docker.
 
 ## 📁 Structure
 
 ```
 src/
-  domain/      cœur PUR (similarité, scoring, géo, images, historisation) + tests
+  domain/      cœur PUR (similarité, embeddings, scoring, géo, images, historisation) + tests
   ingestion/   connecteurs + schema (zod) + pipeline + bookmarklet + tests
+  notify/      partie PURE du dispatch (e-mail, statuts par canal), copiée côté Edge + tests
   store/       Zustand (mode local) + persistance + démo
   backend/     sélection backend, client, mappers, dépôt, file de synchro
-  auth/        AuthProvider + AuthGate
+  auth/        AuthProvider + AuthGate + refus d'inscription sur invitation
   components/  layout, nav, menu d'en-tête, UI (badges, sparkline)
   features/    écrans (dashboard, searches, listings, similar, map,
                notifications, processing, settings, import)
   lib/         formatage, géocodeur (BAN), appui long
 supabase/
-  migrations/  0001_schema … 0009_notification_delivery (RLS, planif, partage, livraison)
-  functions/   ingest-run · notify · dvf · connector-test · notify-test · _shared (core généré)
+  migrations/  0001_schema … 0018_signup_policy (RLS, planif, partage, livraison,
+               embeddings, e-mail, inscription)
+  functions/   ingest-run · embed · notify · dvf · connector-test · notify-test ·
+               _shared (core généré)
+  tests/       pgTAP (joués en CI)
 ```
 
 ## 📝 Licence

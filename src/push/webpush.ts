@@ -87,12 +87,13 @@ export async function enablePush(): Promise<{ ok: boolean; error?: string }> {
 export interface TestDispatch {
   webhookSent?: number;
   pushSent?: number;
+  emailSent?: number;
   dispatched?: number;
 }
 
 /**
  * Envoie une notification de TEST à soi-même (Edge `notify-test`, JWT) : crée
- * l'alerte puis déclenche son dispatch immédiat (webhook + web push). Permet de
+ * l'alerte puis déclenche son dispatch immédiat (webhook + web push + e-mail). Permet de
  * valider la chaîne de livraison de bout en bout. Le statut détaillé par canal
  * apparaît ensuite dans le centre de notifications.
  */

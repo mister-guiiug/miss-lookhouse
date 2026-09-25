@@ -19,6 +19,7 @@ on:
       - 'src/ingestion/schema.ts'
       - 'src/ingestion/fieldMap.ts'
       - 'src/ingestion/sites/**'
+      - 'src/notify/**'
       - 'scripts/build-edge-core.mjs'
       - 'supabase/functions/_shared/core/**'
   workflow_dispatch:

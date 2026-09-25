@@ -1,8 +1,13 @@
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { GESTES, trackEvent } from '@mister-guiiug/dev-pwa-config/analytics';
 import { useAppStore } from '../../store/useAppStore';
+import { IS_SUPABASE } from '../../backend/config';
+import {
+  embeddingsActive,
+  useEmbeddingPreference,
+} from '../similar/embeddingPreference';
 import { formatDate, formatPrice, nowMs, pricePerM2 } from '../../lib/format';
 import {
   BucketBadge,
@@ -19,6 +24,10 @@ import { DvfReferenceCard } from './DvfReferenceCard';
 
 const QUICK_TAGS = ['à visiter', 'négociable', 'lumineux', 'travaux', 'rare'];
 
+// Hors du premier chargement : le morceau ne part que si l'utilisateur a
+// activé la similarité par embeddings, en mode compte (désactivée par défaut).
+const RapprochementsCard = lazy(() => import('../similar/RapprochementsCard'));
+
 export function ListingDetailScreen() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -29,6 +38,8 @@ export function ListingDetailScreen() {
   const setStatus = useAppStore(s => s.setStatus);
   const toggleTag = useAppStore(s => s.toggleTag);
   const addNote = useAppStore(s => s.addNote);
+  const embeddingsChoisis = useEmbeddingPreference(s => s.enabled);
+  const avecEmbeddings = embeddingsActive(embeddingsChoisis, IS_SUPABASE);
 
   const [noteDraft, setNoteDraft] = useState('');
 
@@ -225,32 +236,52 @@ export function ListingDetailScreen() {
         surfaceM2={listing.surfaceM2}
       />
 
-      {/* Similaires / doublons */}
-      {similar.length > 0 && (
-        <div className="card">
-          <h3 className="section-title">Annonces similaires / recyclées</h3>
-          {similar.map(({ sim, other }) =>
-            other ? (
-              <Link
-                key={sim.id}
-                to={`/annonces/${other.id}`}
-                className="card card-link"
-                style={{ marginTop: '0.5rem' }}
-              >
-                <div className="row spread">
-                  <span className="h-title" style={{ fontSize: '0.9rem' }}>
-                    {other.title ?? 'Annonce'}
-                  </span>
-                  <BucketBadge bucket={sim.bucket} />
-                </div>
-                <div className="muted" style={{ fontSize: '0.8rem' }}>
-                  Similarité {sim.score}/100 · {other.sourceId} ·{' '}
-                  {formatPrice(other.price)}
-                </div>
-              </Link>
-            ) : null
-          )}
-        </div>
+      {/* Similaires / doublons. Réglage actif (mode compte) : la carte
+          heuristique + embeddings, qui dit d'où vient chaque rapprochement ;
+          sinon, les arêtes de l'heuristique seules, comme avant. */}
+      {avecEmbeddings ? (
+        <Suspense
+          fallback={
+            <div className="card">
+              <p role="status" className="muted" style={{ margin: 0 }}>
+                Chargement des rapprochements…
+              </p>
+            </div>
+          }
+        >
+          <RapprochementsCard
+            listing={listing}
+            edges={similarities}
+            byId={byId}
+          />
+        </Suspense>
+      ) : (
+        similar.length > 0 && (
+          <div className="card">
+            <h3 className="section-title">Annonces similaires / recyclées</h3>
+            {similar.map(({ sim, other }) =>
+              other ? (
+                <Link
+                  key={sim.id}
+                  to={`/annonces/${other.id}`}
+                  className="card card-link"
+                  style={{ marginTop: '0.5rem' }}
+                >
+                  <div className="row spread">
+                    <span className="h-title" style={{ fontSize: '0.9rem' }}>
+                      {other.title ?? 'Annonce'}
+                    </span>
+                    <BucketBadge bucket={sim.bucket} />
+                  </div>
+                  <div className="muted" style={{ fontSize: '0.8rem' }}>
+                    Similarité {sim.score}/100 · {other.sourceId} ·{' '}
+                    {formatPrice(other.price)}
+                  </div>
+                </Link>
+              ) : null
+            )}
+          </div>
+        )
       )}
 
       {/* Vérification métier */}

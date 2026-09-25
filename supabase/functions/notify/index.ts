@@ -6,13 +6,30 @@
 // ║ puis les estampille `dispatched_at = now()` → aucune ne part deux fois  ║
 // ║ (cf. migration 0005). `read_at` reste l'état de lecture in-app, distinct.║
 // ║                                                                        ║
-// ║ Canaux : WEBHOOK (Telegram/Slack) + WEB PUSH (VAPID, via npm:web-push). ║
-// ║ La clé VAPID privée est un secret d'Edge Function. E-mail : à brancher. ║
+// ║ Canaux : WEBHOOK (Telegram/Slack) + WEB PUSH (VAPID, via npm:web-push)  ║
+// ║ + E-MAIL (API HTTP compatible Resend, opt-in par utilisateur, 0017).    ║
+// ║ La clé VAPID privée et la clé d'API e-mail sont des secrets d'Edge      ║
+// ║ Function. Sans les secrets e-mail, le canal est `skipped`, jamais en    ║
+// ║ échec. La partie PURE du canal e-mail (qui, quoi, quel statut) vit dans ║
+// ║ src/notify/, testée par vitest, copiée dans _shared/core/notify/.       ║
 // ╚══════════════════════════════════════════════════════════════════════╝
 import webpush from 'npm:web-push@3.6.7';
 import { cors, json } from '../_shared/cors.ts';
 import { adminClient, checkCronToken } from '../_shared/admin.ts';
 import { fetchWithTimeout } from '../_shared/net.ts';
+import {
+  buildEmailRequest,
+  composeNotificationEmail,
+  decideEmail,
+  emailStatusFromHttp,
+  readEmailSetup,
+  type EmailRecipient,
+} from '../_shared/core/notify/email.ts';
+import {
+  statusFromCounts,
+  type ChannelStatus,
+  type DeliverySummary,
+} from '../_shared/core/notify/delivery.ts';
 
 interface Body {
   notificationId?: string;
@@ -30,6 +47,11 @@ interface PushSub {
   p256dh: string;
   auth: string;
 }
+interface Prefs {
+  webhook_url: string | null;
+  webpush_enabled: boolean;
+  email_enabled: boolean;
+}
 
 // VAPID : clés publiques/privées + sujet (mailto). Push actif seulement si présentes.
 const VAPID_PUBLIC = Deno.env.get('VAPID_PUBLIC_KEY');
@@ -43,6 +65,19 @@ if (PUSH_READY) {
     VAPID_PUBLIC as string,
     VAPID_PRIVATE as string
   );
+}
+
+// E-mail : EMAIL_API_KEY + EMAIL_FROM (+ EMAIL_API_URL, APP_URL facultatifs).
+const EMAIL_SETUP = readEmailSetup(name => Deno.env.get(name));
+
+// Resend accepte 2 requêtes par seconde par défaut : au-delà, 429 — et un
+// e-mail refusé pour cadence serait perdu (dispatch-once). On espace donc.
+const EMAIL_MIN_GAP_MS = 550;
+let lastEmailAt = 0;
+async function emailThrottle(): Promise<void> {
+  const wait = lastEmailAt + EMAIL_MIN_GAP_MS - Date.now();
+  if (wait > 0) await new Promise(r => setTimeout(r, wait));
+  lastEmailAt = Date.now();
 }
 
 Deno.serve(async (req: Request) => {
@@ -67,22 +102,19 @@ Deno.serve(async (req: Request) => {
   if (error) return json({ error: error.message }, 500);
   const notifs = (data ?? []) as NotifRow[];
   if (notifs.length === 0)
-    return json({ candidates: 0, webhookSent: 0, pushSent: 0 });
+    return json({ candidates: 0, webhookSent: 0, pushSent: 0, emailSent: 0 });
 
   // Caches par utilisateur (évite N requêtes redondantes).
-  const prefsCache = new Map<
-    string,
-    { webhook_url: string | null; webpush_enabled: boolean } | null
-  >();
+  const prefsCache = new Map<string, Prefs | null>();
   const getPrefs = async (userId: string) => {
     if (prefsCache.has(userId)) return prefsCache.get(userId) ?? null;
     const { data: prefs } = await supabase
       .from('notification_preferences')
-      .select('webhook_url, webpush_enabled')
+      .select('webhook_url, webpush_enabled, email_enabled')
       .eq('user_id', userId)
       .maybeSingle();
-    prefsCache.set(userId, prefs ?? null);
-    return prefs ?? null;
+    prefsCache.set(userId, (prefs as Prefs | null) ?? null);
+    return (prefs as Prefs | null) ?? null;
   };
   const subsCache = new Map<string, PushSub[]>();
   const getSubs = async (userId: string) => {
@@ -95,27 +127,36 @@ Deno.serve(async (req: Request) => {
     subsCache.set(userId, list);
     return list;
   };
-
-  // Statut de livraison par canal (persisté dans notifications.delivery, cf. 0009).
-  type ChannelStatus =
-    'sent' | 'partial' | 'failed' | 'skipped' | 'no_subscription';
-  interface Delivery {
-    at: string;
-    channels: { webhook: ChannelStatus; push: ChannelStatus };
-    pushSent: number;
-    pushFailed: number;
-  }
+  // L'adresse du COMPTE du destinataire, et si elle est confirmée : lue dans
+  // auth.users par l'API d'administration, jamais copiée en base.
+  const accountCache = new Map<string, EmailRecipient | null>();
+  const getAccount = async (userId: string) => {
+    if (accountCache.has(userId)) return accountCache.get(userId) ?? null;
+    const { data: res, error: accErr } =
+      await supabase.auth.admin.getUserById(userId);
+    const account: EmailRecipient | null =
+      accErr || !res?.user
+        ? null
+        : {
+            email: res.user.email ?? null,
+            email_confirmed_at: res.user.email_confirmed_at ?? null,
+          };
+    accountCache.set(userId, account);
+    return account;
+  };
 
   const dispatchedAt = new Date().toISOString();
   let webhookSent = 0;
   let pushSent = 0;
+  let emailSent = 0;
   const processedIds: string[] = [];
-  const deliveryById = new Map<string, Delivery>();
+  const deliveryById = new Map<string, DeliverySummary>();
 
   for (const n of notifs) {
     const prefs = await getPrefs(n.user_id);
     let webhook: ChannelStatus = 'skipped';
     let push: ChannelStatus = 'skipped';
+    let email: ChannelStatus = 'skipped';
     let nPushSent = 0;
     let nPushFailed = 0;
 
@@ -175,15 +216,55 @@ Deno.serve(async (req: Request) => {
             }
           }
         }
-        push =
-          nPushFailed === 0 ? 'sent' : nPushSent === 0 ? 'failed' : 'partial';
+        push = statusFromCounts(nPushSent, nPushFailed);
         pushSent += nPushSent;
       }
     }
 
+    // — Canal E-MAIL (opt-in, adresse du compte confirmée) —
+    // Le compte n'est lu que si la personne a demandé l'e-mail ET que le
+    // serveur sait écrire : ni appel d'administration ni adresse manipulée
+    // pour rien.
+    const optedIn = Boolean(prefs?.email_enabled);
+    const account =
+      optedIn && EMAIL_SETUP.state === 'ready'
+        ? await getAccount(n.user_id)
+        : null;
+    const decision = decideEmail(optedIn, EMAIL_SETUP, account);
+    if (decision.send && EMAIL_SETUP.state === 'ready') {
+      const message = composeNotificationEmail(
+        {
+          id: n.id,
+          title: n.title,
+          body: n.body,
+          listingId: n.listing_id,
+        },
+        EMAIL_SETUP.config.appUrl
+      );
+      const request = buildEmailRequest(
+        EMAIL_SETUP.config,
+        decision.to,
+        message,
+        n.id
+      );
+      try {
+        await emailThrottle();
+        const res = await fetchWithTimeout(request.url, request.init);
+        await res.body?.cancel();
+        email = emailStatusFromHttp(res.status);
+      } catch (_e) {
+        // Fournisseur injoignable : comme le webhook, on estampille quand
+        // même — un e-mail en échec n'est pas une notification à rejouer.
+        email = 'failed';
+      }
+      if (email === 'sent') emailSent++;
+    } else if (!decision.send) {
+      email = decision.status;
+    }
+
     deliveryById.set(n.id, {
       at: dispatchedAt,
-      channels: { webhook, push },
+      channels: { webhook, push, email },
       pushSent: nPushSent,
       pushFailed: nPushFailed,
     });
@@ -215,6 +296,7 @@ Deno.serve(async (req: Request) => {
     candidates: notifs.length,
     webhookSent,
     pushSent,
+    emailSent,
     dispatched: processedIds.length,
   });
 });

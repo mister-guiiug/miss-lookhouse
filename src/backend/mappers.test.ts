@@ -181,7 +181,7 @@ describe('status & notification mappers', () => {
       dispatched_at: '2026-06-21T08:01:00Z',
       delivery: {
         at: '2026-06-21T08:01:00Z',
-        channels: { webhook: 'sent', push: 'partial' },
+        channels: { webhook: 'sent', push: 'partial', email: 'failed' },
         pushSent: 1,
         pushFailed: 1,
       },
@@ -189,6 +189,7 @@ describe('status & notification mappers', () => {
     expect(n.dispatchedAt).toBe('2026-06-21T08:01:00Z');
     expect(n.delivery?.channels?.webhook).toBe('sent');
     expect(n.delivery?.channels?.push).toBe('partial');
+    expect(n.delivery?.channels?.email).toBe('failed');
     expect(n.delivery?.pushSent).toBe(1);
   });
 });

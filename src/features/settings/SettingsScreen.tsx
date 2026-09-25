@@ -1,9 +1,11 @@
-import { Download, LogOut, Mail, RotateCcw, Rss, Send } from 'lucide-react';
+import { Download, LogOut, RotateCcw, Rss, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { User } from '@supabase/supabase-js';
 import { useThemeContext } from '@mister-guiiug/dev-pwa-config/react/theme-provider';
 import { useAuthContext } from '@mister-guiiug/dev-pwa-config/react/auth-provider';
 import { PushToggle } from './PushToggle';
+import { EmailToggle } from './EmailToggle';
+import { EmbeddingToggle } from './EmbeddingToggle';
 import { DangerZone } from './DangerZone';
 import { useAppStore } from '../../store/useAppStore';
 import { BACKEND, IS_SUPABASE } from '../../backend/config';
@@ -58,18 +60,13 @@ export function SettingsScreen() {
       <h2 className="section-title">Notifications</h2>
       <div className="card">
         <p className="muted" style={{ marginTop: 0, fontSize: '0.84rem' }}>
-          Canaux configurables. Le Web Push et l’email nécessitent le backend
-          Supabase (clé VAPID publique + Edge Function). En mode démo, les
-          alertes restent <strong>in-app</strong>.
+          Canaux configurables. Le Web Push et l’e-mail nécessitent le backend
+          Supabase (la fonction d’envoi et ses secrets, côté serveur). En mode
+          démo, les alertes restent <strong>in-app</strong>.
         </p>
         <PushToggle />
-        <div className="row spread" style={{ marginTop: '0.4rem' }}>
-          <span className="row">
-            <Mail size={16} aria-hidden /> E-mail (résumé)
-          </span>
-          <span className="badge badge-muted">
-            {BACKEND === 'supabase' ? 'disponible' : 'backend requis'}
-          </span>
+        <div style={{ marginTop: '0.6rem' }}>
+          <EmailToggle />
         </div>
         <div className="row spread" style={{ marginTop: '0.4rem' }}>
           <span className="row">
@@ -77,6 +74,11 @@ export function SettingsScreen() {
           </span>
           <span className="badge badge-muted">optionnel</span>
         </div>
+      </div>
+
+      <h2 className="section-title">Doublons et rapprochements</h2>
+      <div className="card">
+        <EmbeddingToggle />
       </div>
 
       {IS_SUPABASE && user && (
