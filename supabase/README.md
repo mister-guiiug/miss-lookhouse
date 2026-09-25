@@ -43,7 +43,8 @@ Ordre : `0001_schema` → `0002_rls` → `0003_seed` (référentiel sources) →
 `0012_rls_no_force` (retrait de `force row level security`, cf. §7) →
 `0013_delete_my_account` (RGPD art. 17 : l'utilisateur efface son compte) →
 `0014_keep_alive_privileges` (privilèges de table de `keep_alive`, seconde
-barrière indépendante de la RLS).
+barrière indépendante de la RLS) → `0015_ingestion_privileges` (seul pg_cron
+déclenche l'ingestion : `anon` pouvait l'appeler par PostgREST).
 
 > ⚠️ **`0011_keep_alive` n'est pas appliquée** : la table n'existe pas sur le
 > projet hébergé, vérifié le 13/09/2026 (`PGRST205` sur
@@ -117,7 +118,8 @@ Un éventuel jeton d'API est un **secret d'Edge Function** référencé par
 
 Stocker l'URL de la fonction et le jeton dans le **Vault**, puis la migration
 `0004` programme l'appel horaire (`lh_trigger_ingestion`). Si les secrets sont
-absents, la fonction de déclenchement est un **no-op** inoffensif.
+absents, la fonction de déclenchement est un **no-op** inoffensif. Depuis
+`0015`, seuls le cron (`postgres`) et `service_role` peuvent l'exécuter.
 
 ```sql
 -- À exécuter une fois (Dashboard → SQL), avec vos valeurs :
