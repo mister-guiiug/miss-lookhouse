@@ -52,7 +52,9 @@ exactement là où l'annonce l'est, index HNSW cosinus, RPC des voisins) →
 `0017_notification_email` (le canal e-mail de `notify` : documentation de la
 base et contrat de l'opt-in) → `0018_signup_policy` (politique d'inscription
 `open` / `invite` et le hook « Before User Created », **inactif tant qu'il n'est
-pas branché**, cf. §4).
+pas branché**, cf. §4) → `0019_due_searches_privileges` (la vue des recherches
+dues, lisible par `anon` et sous BYPASSRLS, passe en `security_invoker` et
+n'est plus lisible que par `service_role`).
 
 > `0011_keep_alive` et `0014_keep_alive_privileges` sont **appliquées** : le
 > dépôt a reçu ses secrets le 14/09/2026, et le ping anti-pause vise de nouveau
