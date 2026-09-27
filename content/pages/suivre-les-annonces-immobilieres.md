@@ -54,7 +54,7 @@ Exemple : 245 000 € pour 70 m², c'est 3 500 € le mètre carré. Si la médi
 
 ## Comment Miss LookHouse vous aide
 
-Miss LookHouse est une application de veille immobilière. Vous y faites entrer les annonces qui vous intéressent en collant leur lien ou un fichier JSON, ou grâce à un favori de capture qui copie le titre, le prix et la photo de la page que vous consultez.
+[Miss LookHouse](https://mister-guiiug.github.io/miss-lookhouse/) est une application de veille immobilière. Vous y faites entrer les annonces qui vous intéressent en collant leur lien ou un fichier JSON, ou grâce à un favori de capture qui copie le titre, le prix et la photo de la page que vous consultez.
 
 - **Des recherches** : ville et rayon ou zone dessinée sur une carte, budget, surface, pièces, type de bien, mots-clés exclus.
 - **Le repérage des doublons** : chaque rapprochement reçoit un score sur 100, calculé à partir du texte, du prix, de la surface, des pièces, de la localisation, des photos et du contact, puis classé en doublon exact, probablement identique ou similaire. Les annonces proches sont regroupées.
