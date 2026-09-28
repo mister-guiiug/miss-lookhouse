@@ -238,8 +238,9 @@ techniques (migrations, RLS, planification, Edge Functions, secrets) :
   renseigner `VITE_BACKEND=supabase` + URL + **clé anon publiques**.
 - **Build de production** : lit `.env.production` (versionné, **valeurs publiques
   uniquement** ; la RLS arbitre tous les accès) et reçoit du workflow `Deploy`
-  deux variables du dépôt. `VITE_SENTRY_DSN` : les erreurs partent à Sentry
-  (hébergement en Allemagne) dès le chargement, sans demande de consentement.
+  deux variables du dépôt. `VITE_SENTRY_DSN` : Sentry (hébergement en
+  Allemagne) démarre dès le chargement, sans demande de consentement ; il
+  signale chaque ouverture (session) et reçoit un rapport à chaque erreur.
   `VITE_POSTHOG_KEY` : la mesure d'audience PostHog (nuage européen) n'est
   chargée qu'après accord dans le bandeau de consentement.
 
