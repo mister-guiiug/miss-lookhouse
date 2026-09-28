@@ -1,16 +1,27 @@
 # 🏠🔭 Miss LookHouse
 
-PWA de **veille immobilière responsable** : surveillez plusieurs sources
-d'annonces sur une zone géographique, **historisez** les annonces, détectez les
-**doublons / annonces recyclées**, suivez l'**évolution des prix**, **qualifiez**
-manuellement et recevez des **notifications** pertinentes.
+PWA de **veille immobilière** : surveillez plusieurs sources d'annonces sur une
+zone géographique, **historisez** les annonces, détectez les **doublons /
+annonces recyclées**, suivez l'**évolution des prix**, **qualifiez** manuellement
+et recevez des **notifications** pertinentes.
 
-> **Collecte responsable, par conception.** Miss LookHouse **n'aspire pas** les
-> portails tiers. Elle privilégie les **API/flux autorisés**, l'**import
-> manuel** (URL/JSON) et la **capture initiée par l'utilisateur**, derrière une
-> couche d'abstraction de sources. Aucun contournement de protection, aucun
-> scraping agressif. Les limites légales/techniques de chaque source sont
-> documentées dans le référentiel `sources` (migration `0003`).
+> **D'où viennent les annonces.** Trois voies :
+>
+> - l'**import manuel** (URL ou JSON collé) ;
+> - la **capture initiée par l'utilisateur** : un bookmarklet copie les champs
+>   de la page qu'il consulte ;
+> - une **collecte serveur automatique** : les Edge Functions `ingest-run` et
+>   `ingest-now` lisent les plans de site et les pages d'annonces publiques de
+>   **14 sites d'agences et de réseaux immobiliers** (liste dans
+>   `scripts/seed-agences.mjs`), et en extraient prix, surface, pièces et ville
+>   (balises de la page, JSON-LD, API REST publique de WordPress pour l'un
+>   d'eux).
+>
+> Le collecteur s'annonce (`miss-lookhouse-collector/1.0`), lit le HTML tel qu'il
+> est servi, espace ses requêtes d'au moins 300 ms et s'arrête à 50 ou 60
+> annonces par site et par passage. **Il ne lit pas le `robots.txt` des sites**,
+> et le dépôt ne consigne aucune autorisation de leur part. leboncoin, SeLoger,
+> Bien'ici et PAP ne sont pas collectés.
 
 Membre de la famille de PWA **mister-guiiug** (React 19 + Vite 8 + Tailwind v4 +
 Zustand + Zod, config partagée `@mister-guiiug/dev-pwa-config`).
@@ -26,8 +37,9 @@ Zustand + Zod, config partagée `@mister-guiiug/dev-pwa-config`).
 - **MVP + durcissement livrés** : sécurité serveur (anti-SSRF, timeouts,
   comparaison à temps constant), fiabilité (pagination du pull, écritures par
   lots, garde anti-dérive du cœur Edge), **cœur métier partagé front↔Edge**,
-  **Web Push** (VAPID), **connecteurs `authorized_api`** (moteur générique +
-  dry-run), **prix de référence DVF**, **partage de recherches** (lecture),
+  **Web Push** (VAPID), **connecteurs de collecte** (moteur générique
+  `authorized_api` + dry-run, et connecteurs de site : plans de site, HTML,
+  JSON-LD, WordPress REST), **prix de référence DVF**, **partage de recherches** (lecture),
   **statut de livraison** des notifications, **canal e-mail** (opt-in),
   **similarité par embeddings** (option) et **politique d'inscription** (hook,
   sur invitation par défaut). Reste : **éprouver le push réel** (navigateur
@@ -37,22 +49,31 @@ Zustand + Zod, config partagée `@mister-guiiug/dev-pwa-config`).
 ## ✨ Ce qui est déjà là
 
 - **Cœur métier pur & testé** (`src/domain`) : similarité explicable (texte,
-  prix, surface, pièces, géo, **hash perceptuel d'images**, contact), scoring de
+  prix, surface, pièces, géo, **hash perceptuel d'images** (comparaison
+  d'empreintes fournies : rien ne les calcule depuis les photos), contact), scoring de
   pertinence/fraîcheur, détection de **baisse de prix** et de **republication**,
   historisation (deltas + série de prix), **clustering** de doublons.
 - **Pipeline d'ingestion pur & testé** (`src/ingestion`) : connecteurs (import
-  manuel, URL de recherche, **capture navigateur** via bookmarklet, stub API
-  autorisée), validation Zod, plan d'actions idempotent.
+  manuel, URL de recherche, **capture navigateur** via bookmarklet, API
+  autorisée, et connecteurs de site dans `src/ingestion/sites` : plans de site,
+  HTML, JSON-LD, WordPress REST), validation Zod, plan d'actions idempotent.
 - **PWA fonctionnelle en mode local** : import réel → dédup → scoring →
   notifications, exécutés par le moteur dans le navigateur.
 - **Écrans complets** : tableau de bord, recherches (création / **édition** /
-  activation), annonces + **détail** + **galerie photos** (lightbox), **doublons**,
+  activation), annonces + **détail** + **galerie photos** (lightbox ; en mode
+  Supabase, les annonces arrivent sans photos), **doublons**,
   **carte** interactive (Leaflet/OSM), notifications (**appui long** = repasser en
   non-lu), **vérification métier** (checklist / confiance / anomalies), **journal
   des traitements**, import, réglages + menu d'en-tête (version / forcer la MAJ).
 - **Backend Supabase opérationnel** : schéma normalisé + **RLS deny-by-default** +
-  audit + planification (`supabase/migrations` `0001→0018`), Edge Functions
-  `ingest-run` (cron horaire, **cœur partagé**), `embed` (embeddings
+  audit + planification (`supabase/migrations` `0001→0019`), Edge Functions
+  `ingest-run` (réveillée toutes les heures par pg_cron ; collecte chaque
+  recherche due, `hourly` après 55 min, `daily` après 23 h ; **cœur partagé**),
+  `ingest-now` (collecte immédiate du catalogue partagé, lancée par tout
+  utilisateur connecté depuis « Traitements », au plus une fois par 10 minutes),
+  `connectors-admin` (gestion collaborative : tout utilisateur connecté active ou
+  coupe les connecteurs du catalogue partagé et fixe leurs départements ; sans
+  département, le périmètre est national), `embed` (embeddings
   `gte-small`, appelée en fin d'ingestion), `notify` (dispatch-once : webhook +
   **Web Push** VAPID + **e-mail** + **statut de livraison**), `dvf` (prix au
   m²), `connector-test` (dry-run) et `notify-test` (notification de test).
@@ -75,7 +96,8 @@ Zustand + Zod, config partagée `@mister-guiiug/dev-pwa-config`).
 - **Géocodage** Base Adresse Nationale (officiel, gratuit, sans clé).
 - **240 tests** unitaires (Vitest : cœur métier, mélange des embeddings,
   ingestion, composition des e-mails, mappers, géocodeur, file de synchro,
-  écrans) et **6 fichiers pgTAP** joués en CI (RLS, `security definer`,
+  écrans) et **8 fichiers pgTAP** joués en CI (RLS, `security definer`,
+  suppression de compte, droits d'ingestion et de la vue des recherches dues,
   embeddings, opt-in e-mail, hook d'inscription).
 
 ## 🚧 Ce qui reste (honnêteté)
@@ -104,16 +126,20 @@ Zustand + Zod, config partagée `@mister-guiiug/dev-pwa-config`).
   posés a priori, non calibrés sur un corpus. L'index HNSW est approximatif, et
   la RLS filtre ses candidats après lui. Le signal s'affiche sur la **fiche**
   d'une annonce ; l'écran « Doublons » reste celui de l'heuristique.
-- **Connecteurs par source réelle** : le moteur générique et le dry-run existent,
-  mais brancher leboncoin / SeLoger / … reste **suspendu à l'existence d'une
-  API/flux autorisé** (voir hypothèses).
+- **Connecteurs par source réelle** : 14 sites d'agences et de réseaux sont
+  collectés depuis fin juin 2026 par des connecteurs de site (voir « D'où
+  viennent les annonces »). Ils sont enregistrés en mode `authorized_api` alors
+  qu'ils lisent des pages publiques. **Reste à faire** : lire le `robots.txt` de
+  chaque site et consigner son autorisation ou ses conditions d'utilisation.
+  leboncoin, SeLoger, Bien'ici et PAP restent non branchés, faute d'API ou de
+  flux autorisé (voir hypothèses).
 - **Dette technique** (non bloquante) : typage Supabase complet
   (`database.types.ts`), tests des helpers Edge (DVF).
 
 ### Les gestes qui restent à l'exploitant, dans l'ordre
 
 Le dépôt ne déploie aucune Edge Function et ne pose aucun secret. Les
-migrations `0016`→`0018`, elles, partent en production à la fusion (CI).
+migrations `0016`→`0019`, elles, partent en production à la fusion (CI).
 
 1. **Déployer `embed` et `notify`** (après la fusion et le passage des
    migrations) : `supabase functions deploy embed --no-verify-jwt` et
@@ -136,12 +162,19 @@ migrations `0016`→`0018`, elles, partent en production à la fusion (CI).
 
 - À la connaissance de ce projet, **leboncoin / SeLoger / Bien'ici / PAP
   n'exposent pas d'API publique tierce** pour la veille, et leurs CGU encadrent
-  l'usage automatisé. ⇒ la collecte par défaut est **import/capture utilisateur**.
+  l'usage automatisé. ⇒ ces quatre portails ne sont pas collectés. En **mode
+  local**, les annonces viennent de l'**import/capture utilisateur**. En **mode
+  Supabase** (celui du site déployé), elles viennent du serveur : connecteurs du
+  compte et catalogue partagé « Agences 63 ». Un import ou une capture y reste
+  dans le navigateur, n'est pas envoyé au serveur, et disparaît au chargement
+  suivant, quand le pull remplace le miroir local.
 - **Géocodage** : Base Adresse Nationale `api-adresse.data.gouv.fr` (officiel,
   gratuit, sans clé) — vérifié comme service public.
 - **Web Push** sur iOS nécessite une PWA **installée** (iOS ≥ 16.4) — à tester.
-- Toute activation d'un `server_fetch` doit être vérifiée **au cas par cas**
-  (robots.txt + CGU) avant mise en service.
+- Le code ne lit ni `robots.txt` ni CGU. Les connecteurs de site sont enregistrés
+  en mode `authorized_api`, pas `server_fetch`, et le drapeau
+  `sources.server_fetch_allowed` (posé à `true` pour les 14 sites par
+  `seed-agences.mjs`) n'est lu par aucune fonction : il ne bloque rien.
 
 ---
 
@@ -158,10 +191,11 @@ migrations `0016`→`0018`, elles, partent en production à la fusion (CI).
 ┌─────────────────────────── Supabase ────────────────▼──────────────────────────┐
 │  PostgreSQL : schéma normalisé + RLS deny-by-default + audit (triggers)         │
 │  pg_cron (horaire) → pg_net → Edge Function `ingest-run` (service_role)          │
+│  « Actualiser le catalogue » → Edge `ingest-now` · Edge `connectors-admin`       │
 │  Edge `notify` (webhook + Web Push VAPID + e-mail + statut) · `dvf` · `*-test`   │
 │  Edge `embed` (gte-small, en fin d'ingestion) → pgvector, index HNSW, RLS        │
 │  Hook Auth « Before User Created » → inscription open / invite (si branché)      │
-│  Storage privé `listing-media`                                                   │
+│  Storage privé `listing-media` (prévu, inutilisé par le code)                    │
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -171,26 +205,27 @@ migrations `0016`→`0018`, elles, partent en production à la fusion (CI).
 # 1) Auth GitHub Packages (config famille @mister-guiiug)
 export NODE_AUTH_TOKEN="$(gh auth token)"   # nécessite le scope read:packages
 
-# 2) Installer + lancer (port 5214)
+# 2) Installer + lancer (port 5173, celui de Vite par défaut)
 npm install
 npm run dev
 ```
 
-Ouvrez http://localhost:5214/ — l'app démarre en **mode démo local** avec un jeu
+Ouvrez http://localhost:5173/ : l'app démarre en **mode démo local** avec un jeu
 de données fictif. Essayez **Importer** (charger l'exemple) pour voir le moteur
 dédupliquer/scorer/notifier en direct.
 
 ### Scripts
 
-| Script                  | Rôle                                    |
-| ----------------------- | --------------------------------------- |
-| `npm run dev`           | Serveur de dev (port 5214)              |
-| `npm test`              | Tests unitaires (Vitest)                |
-| `npm run type-check`    | Typage strict (TS `tsc -b`)             |
-| `npm run lint`          | ESLint                                  |
-| `npm run format`        | Prettier (la CI vérifie `format:check`) |
-| `npm run build`         | Build de production                     |
-| `npm run supabase:push` | Applique les migrations (CLI Supabase)  |
+| Script                  | Rôle                                                                     |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `npm run dev`           | Serveur de dev (port 5173)                                               |
+| `npm test`              | Tests unitaires (Vitest)                                                 |
+| `npm run type-check`    | Typage strict (TS `tsc -b`)                                              |
+| `npm run lint`          | ESLint                                                                   |
+| `npm run format`        | Prettier (la CI vérifie `format:check`)                                  |
+| `npm run build`         | Build de production                                                      |
+| `npm run supabase:push` | Applique les migrations (CLI Supabase)                                   |
+| `npm run seed:agences`  | Amorce les 14 connecteurs de site et le catalogue partagé « Agences 63 » |
 
 ## 🔐 Mode Supabase
 
@@ -202,24 +237,32 @@ techniques (migrations, RLS, planification, Edge Functions, secrets) :
 - **Dev local branché Supabase** : copier `.env.example` → `.env.local` et
   renseigner `VITE_BACKEND=supabase` + URL + **clé anon publiques**.
 - **Build de production** : lit `.env.production` (versionné, **valeurs publiques
-  uniquement** ; la RLS arbitre tous les accès).
+  uniquement** ; la RLS arbitre tous les accès) et reçoit du workflow `Deploy`
+  deux variables du dépôt. `VITE_SENTRY_DSN` : les erreurs partent à Sentry
+  (hébergement en Allemagne) dès le chargement, sans demande de consentement.
+  `VITE_POSTHOG_KEY` : la mesure d'audience PostHog (nuage européen) n'est
+  chargée qu'après accord dans le bandeau de consentement.
 
-> Les secrets (`service_role`, mot de passe DB, `INGEST_TOKEN`, clé VAPID
-> privée, clé d'API e-mail) ne vivent **jamais** dans le dépôt — uniquement
-> dans les secrets Supabase / Edge Functions.
+> Les secrets (`service_role`, `INGEST_TOKEN`, clé VAPID privée, clé d'API
+> e-mail) ne vivent **jamais** dans le dépôt : ils sont dans les secrets
+> Supabase / Edge Functions, et dans le Vault pour l'URL et le jeton du cron. Le
+> mot de passe de la base et un jeton d'accès Supabase sont, eux, des secrets
+> GitHub Actions (`SUPABASE_DB_PASSWORD`, `SUPABASE_ACCESS_TOKEN`), lus par le
+> workflow `Supabase migrations`.
 
 > ⚠️ **Les migrations partent en production à la fusion.** Le workflow
 > `Supabase migrations` applique `supabase/migrations/**` au projet hébergé à
 > chaque fusion sur `main` : ses secrets sont posés depuis le 14/09/2026, et il
-> passe depuis (après huit échecs de juin au 13/09, dont l'historique est dans
+> passe depuis (après dix échecs de juin au 13/09, dont l'historique est dans
 > **[`CONFIG.md`](CONFIG.md)**). Une migration doit donc être additive,
 > rejouable et couverte par `supabase/tests/` avant d'être fusionnée. Les Edge
 > Functions, elles, ne sont déployées par aucun workflow.
 
 ## 🌐 Déploiement (GitHub Pages)
 
-CI/CD délégués aux workflows réutilisables famille (`pwa-ci.yml@v1`,
-`pwa-deploy.yml@v1`). `base` = `/miss-lookhouse/`, HashRouter. Le site atterrit sur
+CI/CD délégués aux workflows réutilisables famille, en `@v6` (`pwa-ci.yml`,
+`pwa-deploy.yml`, `pwa-lighthouse.yml`, `pwa-supabase-test.yml`,
+`pwa-supabase-keepalive.yml`). `base` = `/miss-lookhouse/`, HashRouter. Le site atterrit sur
 `https://mister-guiiug.github.io/miss-lookhouse/` (**mode Supabase** — écran de
 connexion). Lancer `npx prettier --write .` avant tout commit (la CI vérifie
 `prettier --check`).
@@ -247,8 +290,11 @@ connexion). Lancer `npx prettier --write .` avant tout commit (la CI vérifie
 - [x] Vérification métier (checklist, niveau de confiance, anomalies)
 - [x] Enrichissement géocodage (BAN)
 - [x] Journal des traitements (runs / événements d'ingestion)
-- [~] Connecteurs `authorized_api` : moteur générique + **dry-run** livrés ;
-  brancher une **source réelle** reste suspendu à une API autorisée
+- [x] Connecteurs de site (plans de site, HTML, JSON-LD, WordPress REST) : 14
+      sites d'agences et de réseaux, amorcés par `npm run seed:agences` ;
+      connecteurs `authorized_api` JSON + **dry-run** ; leboncoin / SeLoger /
+      Bien'ici / PAP non branchés
+- [ ] Lecture du `robots.txt` et trace de l'autorisation de chaque site collecté
 - [x] **Web Push (VAPID)** + **statut de livraison** (à éprouver navigateur
       installé) · **e-mail** : câblé (opt-in), secrets à poser
 - [x] **Cœur métier partagé** front ↔ Edge Functions (`_shared/core`, généré)
@@ -290,23 +336,28 @@ Les tests **pgTAP** (`supabase/tests/`) ne tournent qu'en CI (workflow
 ```
 src/
   domain/      cœur PUR (similarité, embeddings, scoring, géo, images, historisation) + tests
-  ingestion/   connecteurs + schema (zod) + pipeline + bookmarklet + tests
+  ingestion/   connecteurs (dont sites/ : plans de site, HTML, JSON-LD, WordPress)
+               + schema (zod) + pipeline + bookmarklet + tests
   notify/      partie PURE du dispatch (e-mail, statuts par canal), copiée côté Edge + tests
-  store/       Zustand (mode local) + persistance + démo
+  push/        abonnement Web Push
+  store/       Zustand (mode local) + persistance
+  demo/        jeu de données de la démo locale
   backend/     sélection backend, client, mappers, dépôt, file de synchro
-  auth/        AuthProvider + AuthGate + refus d'inscription sur invitation
+  auth/        adaptateur d'auth, AuthGate, inscription (l'AuthProvider vient du socle)
   components/  layout, nav, menu d'en-tête, UI (badges, sparkline)
   features/    écrans (dashboard, searches, listings, similar, map,
-               notifications, processing, settings, import)
-  lib/         formatage, géocodeur (BAN), appui long
+               notifications, processing, settings, import, connectors, auth)
+  lib/         formatage, géocodeur (BAN), DVF, statistiques des passages, appui long
+scripts/       build-edge-core, generate-maskable, seed-agences
 supabase/
-  migrations/  0001_schema … 0018_signup_policy (RLS, planif, partage, livraison,
-               embeddings, e-mail, inscription)
-  functions/   ingest-run · embed · notify · dvf · connector-test · notify-test ·
-               _shared (core généré)
+  migrations/  0001_schema … 0019_due_searches_privileges (RLS, planif, partage,
+               livraison, embeddings, e-mail, inscription, droits de la vue des
+               recherches dues)
+  functions/   ingest-run · ingest-now · connectors-admin · embed · notify · dvf ·
+               connector-test · notify-test · _shared (core généré)
   tests/       pgTAP (joués en CI)
 ```
 
 ## 📝 Licence
 
-MIT — © famille mister-guiiug. Soutien : Buy Me a Coffee (`mister.guiiug`).
+MIT, © 2026 GuiiuG (famille mister-guiiug). Soutien : Buy Me a Coffee (`mister.guiiug`).

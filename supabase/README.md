@@ -301,13 +301,23 @@ Statut par canal dans `notifications.delivery.channels.email` : `sent`,
 > 200 par appel) depuis juin — il faudrait d'abord estampiller cet arriéré
 > (`update notifications set dispatched_at = now() where dispatched_at is null`).
 
-### Connecteurs `authorized_api` (collecte automatique responsable)
+### Connecteurs `authorized_api` (collecte automatique)
 
-`ingest-run` ne collecte QUE via des connecteurs déclarés par l'utilisateur
-(`source_connectors`, `mode = 'authorized_api'`). Pour chaque recherche due, il
-appelle l'URL configurée, normalise via le cœur partagé, puis applique le plan
-(insert/maj + versions + historique de prix par trigger + similarité +
-notifications). **Aucun portail n'est scrapé.** Forme de `config` (jsonb) :
+`ingest-run` ne collecte QUE via les connecteurs de `source_connectors` en
+`mode = 'authorized_api'`. Deux familles partagent ce mode :
+
+- les **connecteurs d'API JSON** (`config.kind` absent ou `json_api`), décrits
+  ci-dessous, qui appellent l'URL configurée ;
+- les **connecteurs de site** (`config.kind` : `sitemap_html`,
+  `sitemap_network`, `jsonld_sitemap`, `netty`, `wordpress_rest`, code dans
+  `src/ingestion/sites`), qui lisent les plans de site et les pages d'annonces
+  publiques de 14 sites d'agences et de réseaux, amorcés par
+  `npm run seed:agences`. **Ils ne lisent pas le `robots.txt` des sites.**
+
+Pour chaque recherche due, les annonces sont normalisées via le cœur partagé,
+puis le plan est appliqué (insert/maj + versions + historique de prix par
+trigger + similarité + notifications). leboncoin, SeLoger, Bien'ici et PAP ne
+sont pas collectés. Forme de `config` (jsonb) d'un connecteur d'API JSON :
 
 | Clé                         | Rôle                                                       |
 | --------------------------- | ---------------------------------------------------------- |
@@ -417,7 +427,11 @@ VITE_VAPID_PUBLIC_KEY=<clé publique VAPID>
 ## 9. Ce qui reste à durcir (honnêteté)
 
 - **Collecte par source** : seuls les connecteurs `authorized_api` collectent
-  automatiquement. Aucun scraping de portail n'est fourni (choix responsable).
+  automatiquement, dont 14 connecteurs de site qui lisent des pages publiques.
+  **Le `robots.txt` des sites n'est pas lu**, et le drapeau
+  `sources.server_fetch_allowed` n'est lu par aucune fonction : reste à les
+  brancher, avec la trace de l'autorisation de chaque site. Les grands
+  portails (leboncoin, SeLoger, Bien'ici, PAP) ne sont pas collectés.
 - **Web Push** : ✅ livré dans `notify` (VAPID + chiffrement via `npm:web-push`,
   abonnement + Service Worker + **statut de livraison**). Reste à **éprouver de
   bout en bout** sur navigateur **installé** (bouton « Notification test »).
