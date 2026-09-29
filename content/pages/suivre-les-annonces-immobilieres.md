@@ -1,6 +1,9 @@
 ---
 title: Suivre les annonces immobilières : doublons et baisses de prix
 description: Même bien publié trois fois, annonce republiée, prix qui baisse : comment suivre les annonces immobilières, repérer les doublons et juger un prix au m².
+date: 2026-09-25
+updated: 2026-09-29
+answer: Pour suivre des annonces immobilières, fixez une recherche précise, puis comparez les annonces sur plusieurs indices à la fois : surface, pièces, prix, photos, quartier et texte. Notez chaque prix revu : un bien passé de 260 000 à 245 000 € a baissé d'environ 5,8 %. Jugez enfin son prix au mètre carré face aux ventes réelles de la commune.
 ---
 
 # Suivre les annonces immobilières : doublons, republications et baisses de prix
@@ -50,14 +53,14 @@ Une annonce qui disparaît puis revient presque identique est probablement une r
 
 Pour juger un prix, ramenez-le au mètre carré, puis comparez-le aux ventes réelles du secteur. Les données DVF (« Demandes de valeurs foncières »), publiées en open data par l'administration fiscale, recensent les ventes immobilières passées.
 
-Exemple : 245 000 € pour 70 m², c'est 3 500 € le mètre carré. Si la médiane des ventes d'appartements de la commune est de 3 200 € le mètre carré, l'annonce se situe environ 9 % au-dessus. Un écart n'est pas forcément un défaut : un étage élevé, un bon état ou une terrasse le justifient parfois.
+Exemple : 245 000 € pour 70 m², c'est 3 500 € le mètre carré. Si la médiane des ventes d'appartements de la commune est de 3 200 € le mètre carré, l'annonce se situe environ 9 % au-dessus. Un écart n'est pas forcément un défaut : un étage élevé, un bon état ou une terrasse le justifient parfois. Avant de visiter, vérifiez aussi que l'annonce porte les mentions obligatoires : voir [Vérifier une annonce immobilière avant de visiter](verifier-une-annonce-immobiliere.html).
 
 ## Comment Miss LookHouse vous aide
 
-[Miss LookHouse](https://mister-guiiug.github.io/miss-lookhouse/) est une application de veille immobilière. Vous y faites entrer les annonces qui vous intéressent en collant leur lien ou un fichier JSON, ou grâce à un favori de capture qui copie le titre, le prix et la photo de la page que vous consultez.
+[Miss LookHouse](https://mister-guiiug.github.io/miss-lookhouse/) est une application de veille immobilière. Dans la version publiée, les annonces viennent d'une collecte faite par son serveur sur des sites d'agences et de réseaux immobiliers ; les grands portails, comme leboncoin, SeLoger, Bien'ici ou PAP, n'en font pas partie. Une annonce ajoutée à la main, par son lien ou par un favori de capture, reste dans le navigateur et disparaît au chargement suivant.
 
 - **Des recherches** : ville et rayon ou zone dessinée sur une carte, budget, surface, pièces, type de bien, mots-clés exclus.
-- **Le repérage des doublons** : chaque rapprochement reçoit un score sur 100, calculé à partir du texte, du prix, de la surface, des pièces, de la localisation, des photos et du contact, puis classé en doublon exact, probablement identique ou similaire. Les annonces proches sont regroupées.
+- **Le repérage des doublons** : chaque rapprochement reçoit un score sur 100, calculé à partir du texte, du prix, de la surface, des pièces, du type de bien, de la localisation et du contact, puis classé en doublon exact (92 et plus), probablement identique (78 et plus) ou similaire (55 et plus). Les annonces proches sont regroupées.
 - **L'évolution du prix** de chaque annonce, et des notifications : nouvelle annonce, baisse de prix (3 % ou plus par défaut), annonce recyclée probable, doublon probable.
 - **La qualification** de chaque annonce (à revoir, intéressante, visitée, offre faite, rejetée…) et une checklist de vérification.
 - **Une carte** des annonces localisées.
@@ -79,8 +82,13 @@ Divisez le prix affiché par la surface indiquée : 245 000 € pour 70 m² donn
 
 ### Où trouver le prix de vente réel des biens d'un quartier ?
 
-Les données DVF, publiées par l'administration fiscale sur data.gouv.fr, recensent les ventes immobilières passées. Elles permettent de calculer un prix médian au mètre carré par commune et par type de bien.
+Les données DVF, publiées par l'administration fiscale sur data.gouv.fr, recensent les ventes immobilières des cinq dernières années, hors Alsace, Moselle et Mayotte, avec une mise à jour deux fois par an. Elles permettent de calculer un prix médian au mètre carré par commune et par type de bien.
 
 ### Faut-il un compte pour utiliser Miss LookHouse ?
 
-Oui. Vos recherches et vos annonces sont liées à votre compte. La connexion se fait par un lien reçu par e-mail, ou par mot de passe.
+Oui. Vos recherches, vos qualifications et vos notes sont liées à votre compte. La connexion se fait par un lien reçu par e-mail, ou par mot de passe.
+
+## Sources
+
+- [Demandes de valeurs foncières (DVF)](https://www.data.gouv.fr/datasets/demandes-de-valeurs-foncieres), data.gouv.fr : le jeu de données de la Direction générale des finances publiques, sa couverture et ses mises à jour.
+- [Explorateur de données data.gouv.fr, ventes immobilières](https://explore.data.gouv.fr/fr/immobilier), data.gouv.fr : les ventes DVF consultables par commune, sans téléchargement.
