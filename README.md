@@ -66,7 +66,7 @@ Zustand + Zod, config partagée `@mister-guiiug/dev-pwa-config`).
   non-lu), **vérification métier** (checklist / confiance / anomalies), **journal
   des traitements**, import, réglages + menu d'en-tête (version / forcer la MAJ).
 - **Backend Supabase opérationnel** : schéma normalisé + **RLS deny-by-default** +
-  audit + planification (`supabase/migrations` `0001→0019`), Edge Functions
+  audit + planification (`supabase/migrations` `0001→0020`), Edge Functions
   `ingest-run` (réveillée toutes les heures par pg_cron ; collecte chaque
   recherche due, `hourly` après 55 min, `daily` après 23 h ; **cœur partagé**),
   `ingest-now` (collecte immédiate du catalogue partagé, lancée par tout
@@ -139,7 +139,7 @@ Zustand + Zod, config partagée `@mister-guiiug/dev-pwa-config`).
 ### Les gestes qui restent à l'exploitant, dans l'ordre
 
 Le dépôt ne déploie aucune Edge Function et ne pose aucun secret. Les
-migrations `0016`→`0019`, elles, partent en production à la fusion (CI).
+migrations `0016`→`0020`, elles, partent en production à la fusion (CI).
 
 1. **Déployer `embed` et `notify`** (après la fusion et le passage des
    migrations) : `supabase functions deploy embed --no-verify-jwt` et
@@ -351,9 +351,9 @@ src/
   lib/         formatage, géocodeur (BAN), DVF, statistiques des passages, appui long
 scripts/       build-edge-core, generate-maskable, seed-agences
 supabase/
-  migrations/  0001_schema … 0019_due_searches_privileges (RLS, planif, partage,
-               livraison, embeddings, e-mail, inscription, droits de la vue des
-               recherches dues)
+  migrations/  0001_schema … 0020_audit_partage_fermes_a_anon (RLS, planif,
+               partage, livraison, embeddings, e-mail, inscription, droits de la
+               vue des recherches dues, audit et partage fermés à anon)
   functions/   ingest-run · ingest-now · connectors-admin · embed · notify · dvf ·
                connector-test · notify-test · _shared (core généré)
   tests/       pgTAP (joués en CI)
