@@ -538,3 +538,10 @@ label {
   margin: 0.5rem auto 0;
   width: calc(100% - 2rem);
 }
+
+/* La mesure d'audience (`ConsentSection` du socle), dans la carte « Mes
+   données (RGPD) » : séparée de l'export par le même écart que les
+   intertitres de carte de la fiche annonce (0,8 rem avec celui du titre). */
+[data-dwc='consent-section'] {
+  margin-top: 0.4rem;
+}

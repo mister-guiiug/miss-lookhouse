@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { User } from '@supabase/supabase-js';
 import { useThemeContext } from '@mister-guiiug/dev-pwa-config/react/theme-provider';
 import { useAuthContext } from '@mister-guiiug/dev-pwa-config/react/auth-provider';
+import { ConsentSection } from '@mister-guiiug/dev-pwa-config/react/consent-section';
 import { PushToggle } from './PushToggle';
 import { EmailToggle } from './EmailToggle';
 import { EmbeddingToggle } from './EmbeddingToggle';
@@ -119,6 +120,18 @@ export function SettingsScreen() {
             <RotateCcw size={16} aria-hidden /> Réinitialiser
           </button>
         </div>
+        {/* Revenir sur son choix de mesure d'audience : le retrait se fait
+            ici, en un clic (RGPD, art. 7.3). Mêmes clé et chargeur que le
+            bandeau. DANS la carte, sous un intertitre : la section porte son
+            propre titre, qu'elle ne sait pas poser au-dessus d'une carte
+            comme le reste de l'écran. */}
+        <ConsentSection
+          posthogKey={import.meta.env.VITE_POSTHOG_KEY}
+          loader={() => import('posthog-js/dist/module.slim.js')}
+          titleClassName="section-title"
+          headingLevel={3}
+          actionClassName="btn"
+        />
       </div>
 
       {IS_SUPABASE && user && (
