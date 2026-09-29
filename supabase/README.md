@@ -54,7 +54,9 @@ base et contrat de l'opt-in) → `0018_signup_policy` (politique d'inscription
 `open` / `invite` et le hook « Before User Created », **inactif tant qu'il n'est
 pas branché**, cf. §4) → `0019_due_searches_privileges` (la vue des recherches
 dues, lisible par `anon` et sous BYPASSRLS, passe en `security_invoker` et
-n'est plus lisible que par `service_role`).
+n'est plus lisible que par `service_role`) → `0020_audit_partage_fermes_a_anon`
+(`lh_audit` et `lh_share_search` ne sont plus exécutables par `anon`, et la
+garde du partage refuse un appelant sans session).
 
 > `0011_keep_alive` et `0014_keep_alive_privileges` sont **appliquées** : le
 > dépôt a reçu ses secrets le 14/09/2026, et le ping anti-pause vise de nouveau

@@ -62,11 +62,8 @@ select set_eq(
   array[
     -- Ne touchent que les recherches de l'appelant
     'lh_list_shares',
-    'lh_unshare_search',
-    -- À fermer à anon (signalé le 29/09/2026) : aucun visiteur anonyme n'a à
-    -- les appeler
-    'lh_audit',
-    'lh_share_search'
+    'lh_unshare_search'
+    -- lh_audit et lh_share_search en sont sorties avec 0020.
   ],
   'les fonctions SECURITY DEFINER exécutables par anon sont exactement la liste relue'
 );
