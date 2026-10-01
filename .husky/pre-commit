@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+# Hook pre-commit standard famille miss-* / mister-*.
+npx lint-staged
