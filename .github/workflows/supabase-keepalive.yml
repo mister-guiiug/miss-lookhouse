@@ -2,7 +2,7 @@
 #
 # Un projet Free se met en pause après sept jours sans requête, et le
 # déploiement échoue alors sur « project is paused » (miss-carbook, 29/08/2026).
-# Ce ping fait un SELECT anonyme tous les trois jours.
+# Ce ping fait un SELECT anonyme chaque jour.
 #
 # Requiert les variables VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY, et une
 # table que `anon` peut lire.
@@ -10,7 +10,7 @@ name: Supabase keep-alive
 
 on:
   schedule:
-    - cron: '31 4 */3 * *' # ~tous les 3 jours (< 7 j) — décalé par dépôt
+    - cron: '31 4 * * *' # chaque jour : tous les 3 jours n'a pas empêché la pause (miss-uwh, 13/10/2026)
   workflow_dispatch:
 
 jobs:
