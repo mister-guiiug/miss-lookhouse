@@ -46,7 +46,7 @@ Deno.serve(async (req: Request) => {
       results.push({
         search: s.name,
         status: 'error',
-        error: e instanceof Error ? e.message : String(e),
+        error: e instanceof Error ? e.message : 'erreur inattendue',
       });
     }
   }

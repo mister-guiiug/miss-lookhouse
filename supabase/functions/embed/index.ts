@@ -71,7 +71,7 @@ Deno.serve(async (req: Request) => {
   } catch (e) {
     return json(
       {
-        error: `Modèle ${EMBEDDING_MODEL} indisponible : ${e instanceof Error ? e.message : String(e)}`,
+        error: `Modèle ${EMBEDDING_MODEL} indisponible : ${e instanceof Error ? e.message : 'erreur inattendue'}`,
       },
       500
     );
