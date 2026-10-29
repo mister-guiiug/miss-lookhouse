@@ -47,7 +47,7 @@ async function triggerEmbed(): Promise<Record<string, unknown>> {
   } catch (e) {
     return {
       status: 'error',
-      error: e instanceof Error ? e.message : String(e),
+      error: e instanceof Error ? e.message : 'erreur inattendue',
     };
   }
 }
@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
       results.push({
         search: search.name,
         status: 'error',
-        error: e instanceof Error ? e.message : String(e),
+        error: e instanceof Error ? e.message : 'erreur inattendue',
       });
     }
   }

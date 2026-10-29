@@ -94,7 +94,12 @@ describe('script anti-FOUC d’index.html', () => {
     // Un désaccord ne casse aucun build : il affiche le premier écran dans le
     // mauvais thème, puis bascule. D'où ce test. On lit le CODE du script, pas
     // les commentaires alentour, qui citent eux aussi les deux clés.
-    const script = /<script>([\s\S]*?)<\/script>/.exec(indexHtml)?.[1] ?? '';
+    // Le premier <script> sans attribut, lu par l'analyseur HTML plutôt que par
+    // une expression régulière (CodeQL js/bad-tag-filter).
+    const script =
+      [...new DOMParser().parseFromString(indexHtml, 'text/html').scripts].find(
+        s => s.attributes.length === 0
+      )?.textContent ?? '';
     const family = script.indexOf(THEME_STORAGE_KEY);
     const legacy = script.indexOf(THEME_LEGACY_KEYS[0] as string);
     expect(family).toBeGreaterThan(-1);

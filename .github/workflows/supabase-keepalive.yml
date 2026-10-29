@@ -13,6 +13,10 @@ on:
     - cron: '31 4 * * *' # chaque jour : tous les 3 jours n'a pas empêché la pause (miss-uwh, 13/10/2026)
   workflow_dispatch:
 
+# Le ping ne lit rien du dépôt : lecture seule, rien de plus.
+permissions:
+  contents: read
+
 jobs:
   keepalive:
     uses: mister-guiiug/dev-pwa-config/.github/workflows/pwa-supabase-keepalive.yml@v6
