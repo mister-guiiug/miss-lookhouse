@@ -20,6 +20,7 @@ import {
   storedSupabaseSession,
 } from '@mister-guiiug/dev-pwa-config/auth/stored-session';
 import { IS_SUPABASE } from '../backend/config';
+import { caseDeSession } from '../backend/caseDeSession';
 import { getSupabase } from '../backend/supabaseClient';
 
 type AuthApi = SupabaseClient['auth'];
@@ -43,9 +44,17 @@ async function apiAuth(): Promise<AuthApi> {
  * désabonné entre-temps. (mister-settle fait le même détour par un `Proxy`,
  * mais son abonnement rend une promesse là où le port attend une fonction :
  * il survit à son appelant.)
+ *
+ * SA CASE DE SESSION, ELLE, EST CONNUE TOUT DE SUITE (`storageKey`) : hors
+ * ligne, le socle lit la session sans appeler le SDK, et sans ce nom il
+ * prendrait la première case `sb-*` du `localStorage` — que toute la famille
+ * partage. Un accesseur, pour lire l'environnement au moment de la question.
  */
 function sdkALaDemande(): { auth: object } {
   const auth = {
+    get storageKey() {
+      return caseDeSession();
+    },
     getSession: async () => (await apiAuth()).getSession(),
     onAuthStateChange: (
       callback: Parameters<AuthApi['onAuthStateChange']>[0]
@@ -105,13 +114,20 @@ function sdkALaDemande(): { auth: object } {
  * honorée : le stockage est vidé d'abord, la garde ne se déclenche pas.
  */
 function avecLaGardeHorsLigne(
-  adaptateur: SupabaseAuthAdapter
+  adaptateur: SupabaseAuthAdapter,
+  client: { auth: object }
 ): SupabaseAuthAdapter {
   return {
     ...adaptateur,
     onAuthStateChange: callback =>
       adaptateur.onAuthStateChange((event, session) => {
-        if (!session && navigateurHorsLigne() && storedSupabaseSession()) {
+        // La session de CE projet : celle d'une autre app de la même origine
+        // ferait passer une vraie déconnexion pour un réseau muet.
+        if (
+          !session &&
+          navigateurHorsLigne() &&
+          storedSupabaseSession(client)
+        ) {
           return;
         }
         callback(event, session);
@@ -131,7 +147,8 @@ function avecLaGardeHorsLigne(
  */
 export function authAdapter(): SupabaseAuthAdapter | null {
   if (!IS_SUPABASE) return null;
-  return avecLaGardeHorsLigne(supabaseAuthAdapter({ client: sdkALaDemande() }));
+  const client = sdkALaDemande();
+  return avecLaGardeHorsLigne(supabaseAuthAdapter({ client }), client);
 }
 
 /**
