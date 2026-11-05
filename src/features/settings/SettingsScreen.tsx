@@ -4,6 +4,7 @@ import type { User } from '@supabase/supabase-js';
 import { useThemeContext } from '@mister-guiiug/dev-pwa-config/react/theme-provider';
 import { useAuthContext } from '@mister-guiiug/dev-pwa-config/react/auth-provider';
 import { ConsentSection } from '@mister-guiiug/dev-pwa-config/react/consent-section';
+import { PrivacyNotice } from '@mister-guiiug/dev-pwa-config/react/privacy-notice';
 import { PushToggle } from './PushToggle';
 import { EmailToggle } from './EmailToggle';
 import { EmbeddingToggle } from './EmbeddingToggle';
@@ -120,6 +121,11 @@ export function SettingsScreen() {
             <RotateCcw size={16} aria-hidden /> Réinitialiser
           </button>
         </div>
+        <PrivacyNotice
+          env={import.meta.env}
+          headingLevel={3}
+          titleClassName="section-title"
+        />
         {/* Revenir sur son choix de mesure d'audience : le retrait se fait
             ici, en un clic (RGPD, art. 7.3). Mêmes clé et chargeur que le
             bandeau. DANS la carte, sous un intertitre : la section porte son
