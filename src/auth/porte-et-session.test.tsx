@@ -243,6 +243,57 @@ describe('le silence du réseau n’est pas une déconnexion', () => {
   });
 });
 
+/*
+ * UNE ORIGINE, UN STOCKAGE, PLUSIEURS APPS. Toute la famille est servie depuis
+ * la même origine : sur un appareil qui sert aussi à une autre app Supabase du
+ * parc, sa case `sb-*` est à côté de la nôtre. La case de CE projet se dérive
+ * de `VITE_SUPABASE_URL`, connue avant le SDK.
+ */
+describe('hors ligne, la session de ce projet, jamais celle d’une autre app', () => {
+  const CASE_SOEUR = 'sb-uneautreapp-auth-token';
+  const SESSION_SOEUR = { ...SESSION, user: { id: 'u-soeur' } };
+
+  beforeEach(() => {
+    vi.stubEnv('VITE_SUPABASE_URL', 'https://abcdefgh.supabase.co');
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('au démarrage, la sienne, même rangée après celle d’une autre app', async () => {
+    localStorage.setItem(CASE_SOEUR, JSON.stringify(SESSION_SOEUR));
+    localStorage.setItem(CASE, JSON.stringify(SESSION));
+    horsLigne();
+    monter();
+
+    // Aucun SDK n'est arrivé (`sdk.current` nul) : la case vient de l'URL.
+    expect(await screen.findByText('application de u1')).toBeTruthy();
+  });
+
+  it('au démarrage, la session d’une AUTRE app ne fait pas entrer', async () => {
+    localStorage.setItem(CASE_SOEUR, JSON.stringify(SESSION_SOEUR));
+    horsLigne();
+    monter();
+
+    expect(await screen.findByText('écran de connexion')).toBeTruthy();
+  });
+
+  it('une vraie déconnexion est honorée même si une autre app a sa session', async () => {
+    const faux = fauxSdk(SESSION);
+    sdk.current = faux.client;
+    localStorage.setItem(CASE_SOEUR, JSON.stringify(SESSION_SOEUR));
+    localStorage.setItem(CASE, JSON.stringify(SESSION));
+    monter();
+    await screen.findByText('application de u1');
+
+    horsLigne();
+    localStorage.removeItem(CASE);
+    act(() => faux.emet('SIGNED_OUT', null));
+
+    expect(await screen.findByText('écran de connexion')).toBeTruthy();
+  });
+});
+
 describe('en mode local', () => {
   it('tout passe, et le SDK n’est jamais demandé', async () => {
     mode.supabase = false;
