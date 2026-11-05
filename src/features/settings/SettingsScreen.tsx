@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Download, LogOut, RotateCcw, Rss, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { User } from '@supabase/supabase-js';
 import { useThemeContext } from '@mister-guiiug/dev-pwa-config/react/theme-provider';
 import { useAuthContext } from '@mister-guiiug/dev-pwa-config/react/auth-provider';
 import { ConsentSection } from '@mister-guiiug/dev-pwa-config/react/consent-section';
+import { ConfirmDialog } from '@mister-guiiug/dev-pwa-config/react/confirm-dialog';
 import { PrivacyNotice } from '@mister-guiiug/dev-pwa-config/react/privacy-notice';
 import { PushToggle } from './PushToggle';
 import { EmailToggle } from './EmailToggle';
@@ -11,6 +13,7 @@ import { EmbeddingToggle } from './EmbeddingToggle';
 import { DangerZone } from './DangerZone';
 import { useAppStore } from '../../store/useAppStore';
 import { BACKEND, IS_SUPABASE } from '../../backend/config';
+import { clearPersistedQueues, unsentCount } from '../../backend/syncQueue';
 import { Footer } from '../../components/Footer';
 
 /** Le troisième choix est neuf : l'ancien sélecteur n'avait que clair/sombre. */
@@ -27,6 +30,31 @@ export function SettingsScreen() {
   const data = useAppStore(s => s.data);
   const resetDemo = useAppStore(s => s.resetDemo);
   const { user, signOut } = useAuthContext<unknown, User>();
+  // Le nombre d'écritures que la déconnexion jetterait, le temps de la question.
+  const [perte, setPerte] = useState<number | null>(null);
+
+  /**
+   * LA FILE D'ÉCRITURES NE SURVIT PAS À LA DÉCONNEXION. Elle vit dans le
+   * stockage de l'APPAREIL, pas dans le compte : sur un appareil partagé, ce
+   * que laisse la personne qui part repartirait sous la session de la
+   * suivante. La purge est donc voulue (`SupabaseSync`), mais jamais en
+   * silence : ce sont des gestes que la personne croit enregistrés. On les
+   * compte et on demande — le geste de mister-doc.
+   */
+  const seDeconnecter = () => {
+    const n = unsentCount();
+    if (n > 0) setPerte(n);
+    else void signOut();
+  };
+
+  const perdreEtSeDeconnecter = () => {
+    setPerte(null);
+    // Avec l'accord, la file est vidée ICI : la purge de `SupabaseSync` n'y
+    // trouve plus rien, et ne prévient pas une seconde fois de ce qui vient
+    // d'être accepté.
+    clearPersistedQueues();
+    void signOut();
+  };
 
   const exportJson = () => {
     const blob = new Blob([JSON.stringify({ v: 1, data }, null, 2)], {
@@ -148,7 +176,7 @@ export function SettingsScreen() {
               <span className="muted" style={{ fontSize: '0.85rem' }}>
                 Connecté : {user.email}
               </span>
-              <button className="btn" onClick={() => void signOut()}>
+              <button className="btn" onClick={seDeconnecter}>
                 <LogOut size={16} aria-hidden /> Se déconnecter
               </button>
             </div>
@@ -166,6 +194,20 @@ export function SettingsScreen() {
             de page, en bas de l'écran, les porte avec la version et le
             signalement — les mêmes que sur l'accueil. */}
       </div>
+
+      <ConfirmDialog
+        open={perte !== null}
+        destructive
+        title="Modifications non envoyées"
+        confirmLabel="Se déconnecter et les perdre"
+        onCancel={() => setPerte(null)}
+        onConfirm={perdreEtSeDeconnecter}
+      >
+        {perte} modification(s) ne sont pas encore parties au serveur. Elles
+        vivent sur CET appareil, pas dans votre compte : se déconnecter les
+        supprime définitivement. Reconnectez-vous au réseau pour les envoyer
+        d’abord.
+      </ConfirmDialog>
 
       {/* EN DERNIER, et séparée du reste : on ne tombe pas dessus en cherchant
           autre chose. Elle ne s'affiche qu'avec un compte — en mode local il

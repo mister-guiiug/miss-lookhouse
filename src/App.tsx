@@ -13,6 +13,7 @@ import { AuthGate } from './auth/AuthGate';
 import { SupabaseSync } from './backend/SupabaseSync';
 import { Layout } from './components/Layout';
 import { OfflineBanner } from './components/OfflineBanner';
+import { SaveFailureToast } from './components/SaveFailureToast';
 import { DashboardScreen } from './features/dashboard/DashboardScreen';
 import { SearchesScreen } from './features/searches/SearchesScreen';
 import { SearchEditScreen } from './features/searches/SearchEditScreen';
@@ -121,6 +122,8 @@ export function App() {
             le message « supprimée · Annuler » doit survivre au changement
             d'écran. */}
         <ToastProvider>
+          {/* Avant la garde : la démo locale écrit aussi, dès le lancement. */}
+          <SaveFailureToast />
           <AuthProvider adapter={adaptateur}>
             {/* AU-DESSUS de la garde, pas dedans : l'écran de connexion est le
                 premier endroit où la coupure fait mal, et c'est justement celui
