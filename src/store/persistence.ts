@@ -16,11 +16,28 @@ export function loadState(): AppData | null {
   }
 }
 
+type SaveFailureListener = (error: unknown) => void;
+const saveFailureListeners = new Set<SaveFailureListener>();
+
+/**
+ * Être prévenu qu'une sauvegarde a été REFUSÉE (stockage plein, navigation
+ * privée). Rend le désabonnement. Un module sans React : c'est
+ * `SaveFailureToast` qui en fait un message.
+ */
+export function onSaveFailure(listener: SaveFailureListener): () => void {
+  saveFailureListeners.add(listener);
+  return () => {
+    saveFailureListeners.delete(listener);
+  };
+}
+
 export function saveState(data: AppData): void {
   try {
     localStorage.setItem(KEY, JSON.stringify({ v: VERSION, data }));
-  } catch {
-    /* quota/SSR : silencieux */
+  } catch (error) {
+    // L'écran reste juste — c'est l'état en mémoire —, mais rien de ce qui
+    // suit ne survivra à la fermeture. Le taire laissait croire le contraire.
+    for (const listener of saveFailureListeners) listener(error);
   }
 }
 

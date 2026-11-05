@@ -129,3 +129,17 @@ export function clearPersistedQueues(): void {
   store.set(QUEUE_KEY, []);
   store.set(DEAD_KEY, []);
 }
+
+/**
+ * Ce que perdrait la purge si elle avait lieu maintenant : les écritures en
+ * attente ET les refusées (elles restent rejouables). Lu dans le stockage, sans
+ * instance, pour la même raison que la purge : la déconnexion ne doit pas
+ * dépendre du fait que la file ait été construite.
+ */
+export function unsentCount(): number {
+  const count = (key: string) => {
+    const items = store.get<unknown[]>(key, []);
+    return Array.isArray(items) ? items.length : 0;
+  };
+  return count(QUEUE_KEY) + count(DEAD_KEY);
+}
