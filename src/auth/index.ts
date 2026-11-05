@@ -20,7 +20,7 @@ import {
   storedSupabaseSession,
 } from '@mister-guiiug/dev-pwa-config/auth/stored-session';
 import { IS_SUPABASE } from '../backend/config';
-import { caseDeSession } from '../backend/caseDeSession';
+import { supabaseStorageKey } from '@mister-guiiug/dev-pwa-config/supabase-client';
 import { getSupabase } from '../backend/supabaseClient';
 
 type AuthApi = SupabaseClient['auth'];
@@ -49,11 +49,14 @@ async function apiAuth(): Promise<AuthApi> {
  * ligne, le socle lit la session sans appeler le SDK, et sans ce nom il
  * prendrait la première case `sb-*` du `localStorage` — que toute la famille
  * partage. Un accesseur, pour lire l'environnement au moment de la question.
+ * Le calcul est celui du socle (6.31.0, promu d'ici), celui-là même que la
+ * fabrique passe au client qu'elle crée, depuis la même `VITE_SUPABASE_URL`.
+ * La fabrique n'est pas lue ici : les tests de la porte la remplacent.
  */
 function sdkALaDemande(): { auth: object } {
   const auth = {
     get storageKey() {
-      return caseDeSession();
+      return supabaseStorageKey(import.meta.env.VITE_SUPABASE_URL);
     },
     getSession: async () => (await apiAuth()).getSession(),
     onAuthStateChange: (
