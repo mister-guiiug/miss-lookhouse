@@ -8,17 +8,15 @@
  * (l'adaptateur), `react/auth-provider` (le fournisseur), `react/auth-gate`
  * (la porte) — à partir de cinq implémentations, dont celle-ci. Il ne reste
  * dans ce fichier que ce qui est PROPRE à l'app : un SDK chargé à la demande,
- * une garde que le socle n'a pas, et l'adresse où le lien de connexion ramène.
+ * et l'adresse où le lien de connexion ramène. La garde hors ligne (« le
+ * silence du réseau n'est pas une déconnexion »), écrite ici d'abord, est dans
+ * l'adaptateur du socle depuis la 6.32.0.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   supabaseAuthAdapter,
   type SupabaseAuthAdapter,
 } from '@mister-guiiug/dev-pwa-config/auth/supabase';
-import {
-  navigateurHorsLigne,
-  storedSupabaseSession,
-} from '@mister-guiiug/dev-pwa-config/auth/stored-session';
 import { IS_SUPABASE } from '../backend/config';
 import { supabaseStorageKey } from '@mister-guiiug/dev-pwa-config/supabase-client';
 import { getSupabase } from '../backend/supabaseClient';
@@ -99,46 +97,6 @@ function sdkALaDemande(): { auth: object } {
 }
 
 /**
- * LE SILENCE DU RÉSEAU N'EST PAS UNE DÉCONNEXION — la garde que le socle n'a
- * pas, et la raison d'être de ce fichier.
- *
- * Supabase s'abonne en émettant l'état initial, et cet état passe par le
- * renouvellement du jeton : hors ligne il n'aboutit pas, et au bout d'une
- * demi-minute la bibliothèque annonce « pas de session ». Mesuré sur un build
- * de production après #78 : ouverte à 3 s, ÉJECTÉE sur l'écran de connexion
- * avant 30. Le port du socle traduit tout évènement sans session en
- * « déconnecté » ; sa lecture bornée (`getSession`) protège l'amorçage, pas
- * ce qui suit.
- *
- * LA DISTINCTION TIENT AU STOCKAGE, et elle est nette : lors d'une vraie
- * déconnexion, Supabase EFFACE la session AVANT d'émettre `SIGNED_OUT`. Si
- * elle est encore là, c'est qu'il n'a déconnecté personne — il a renoncé à
- * joindre le serveur. Une déconnexion demandée sans réseau reste donc
- * honorée : le stockage est vidé d'abord, la garde ne se déclenche pas.
- */
-function avecLaGardeHorsLigne(
-  adaptateur: SupabaseAuthAdapter,
-  client: { auth: object }
-): SupabaseAuthAdapter {
-  return {
-    ...adaptateur,
-    onAuthStateChange: callback =>
-      adaptateur.onAuthStateChange((event, session) => {
-        // La session de CE projet : celle d'une autre app de la même origine
-        // ferait passer une vraie déconnexion pour un réseau muet.
-        if (
-          !session &&
-          navigateurHorsLigne() &&
-          storedSupabaseSession(client)
-        ) {
-          return;
-        }
-        callback(event, session);
-      }),
-  };
-}
-
-/**
  * L'ADAPTATEUR, OU RIEN.
  *
  * `null` en mode `local` : le fournisseur du socle se met alors en mode local
@@ -150,8 +108,9 @@ function avecLaGardeHorsLigne(
  */
 export function authAdapter(): SupabaseAuthAdapter | null {
   if (!IS_SUPABASE) return null;
-  const client = sdkALaDemande();
-  return avecLaGardeHorsLigne(supabaseAuthAdapter({ client }), client);
+  // La garde hors ligne est dans l'adaptateur (socle 6.32.0) ; elle lit la
+  // session de CE projet sous la case que l'enveloppe nomme (`storageKey`).
+  return supabaseAuthAdapter({ client: sdkALaDemande() });
 }
 
 /**
