@@ -260,17 +260,25 @@ label {
   background: color-mix(in srgb, var(--primary) 16%, transparent);
   color: var(--primary-strong);
 }
+/* LE TEXTE D'UNE PASTILLE TEINTÉE TIRE VERS `--text`. Posé dans la couleur
+   pure de son ton, il ne tenait pas 4,5:1 sur sa propre teinte : 4,04:1 pour
+   « active » en clair (#15803d sur #daebe0), 4,3:1 pour « Suspecte » en
+   sombre — relevés par axe (`e2e/a11y.spec.ts`), et l'orange d'avertissement
+   tombait de la même façon par le calcul. Mêlé à 30 % de `--text`, le ton
+   fonce en clair et s'éclaircit en sombre : une seule règle, ~5,6:1 dans les
+   deux thèmes. Même idée que `.badge-primary`, qui écrit en
+   `--primary-strong`. */
 .badge-ok {
   background: color-mix(in srgb, var(--ok) 16%, transparent);
-  color: var(--ok);
+  color: color-mix(in srgb, var(--ok) 70%, var(--text));
 }
 .badge-warn {
   background: color-mix(in srgb, var(--warn) 18%, transparent);
-  color: var(--warn);
+  color: color-mix(in srgb, var(--warn) 70%, var(--text));
 }
 .badge-danger {
   background: color-mix(in srgb, var(--danger) 16%, transparent);
-  color: var(--danger);
+  color: color-mix(in srgb, var(--danger) 70%, var(--text));
 }
 .badge-muted {
   background: var(--surface-2);

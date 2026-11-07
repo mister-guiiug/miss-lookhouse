@@ -220,6 +220,7 @@ dédupliquer/scorer/notifier en direct.
 | ----------------------- | ------------------------------------------------------------------------ |
 | `npm run dev`           | Serveur de dev (port 5173)                                               |
 | `npm test`              | Tests unitaires (Vitest)                                                 |
+| `npm run test:e2e`      | E2E Playwright sur le build de production, en mode local (démo)          |
 | `npm run type-check`    | Typage strict (TS `tsc -b`)                                              |
 | `npm run lint`          | ESLint                                                                   |
 | `npm run format`        | Prettier (la CI vérifie `format:check`)                                  |
@@ -331,6 +332,21 @@ invitation, suppression de compte…).
 
 Les tests **pgTAP** (`supabase/tests/`) ne tournent qu'en CI (workflow
 `Supabase tests`) : le poste n'a pas de Docker.
+
+Les tests **de bout en bout** (`e2e/`, Playwright) construisent l'app de
+production en **mode local** — `VITE_BACKEND=local` l'emporte sur le
+`.env.production` versionné — et la servent sur le port 4173 :
+
+```bash
+npx playwright install chromium   # une fois
+npm run test:e2e -- --project=chromium
+```
+
+`smoke.spec.ts` (`@critical`) vérifie que l'app monte sur le jeu de
+démonstration, le filtre des annonces et une note privée qui survit au
+rechargement ; `a11y.spec.ts` (`@a11y`) passe axe sur l'accueil, les annonces
+et une fiche, en clair et en sombre. La CI joue les deux, sur chromium et
+mobile-chrome.
 
 ## 📁 Structure
 
