@@ -28,6 +28,11 @@ Zustand + Zod, config partagée `@mister-guiiug/dev-pwa-config`).
 
 ---
 
+## Guides
+
+- [Suivre les annonces immobilières](https://mister-guiiug.github.io/miss-lookhouse/suivre-les-annonces-immobilieres.html)
+- [Vérifier une annonce immobilière](https://mister-guiiug.github.io/miss-lookhouse/verifier-une-annonce-immobiliere.html)
+
 ## 📡 Statut
 
 - **Front local-first** : démo 100 % navigateur, **sans backend**.
